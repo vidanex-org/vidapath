@@ -4,7 +4,7 @@
       <button class="delete" @click="opened = false"></button>
 
       <div class="annotations-list-sidebar">
-        <ontology-tree v-model="selectedTermsIds" :ontologys="ontologies" :multiple-selection="false"
+        <ontology-tree v-model="selectedTermsIds" :ontologies="ontologies" :multiple-selection="false"
           :hidden-nodes="hiddenTermsIds" :additional-nodes="[noTermOption]" />
       </div>
 
@@ -18,6 +18,9 @@
           @updateProperties="$emit('updateProperties')"
           @centerView="$emit('centerView', { annot: $event, sameView: isSameView($event) })"
           @delete="$emit('delete', $event)" @select="select" />
+        <div v-else class="has-text-centered p-4" style="color: #888;">
+          <p>No term selected (currentItem is {{ currentItem }})</p>
+        </div>
       </div>
     </div>
     <div v-show="!opened" class="opener" @click="opened = true">
@@ -83,9 +86,6 @@ export default {
     isDisplayedByTerm() {
       return this.displayType === 'TERM';
     },
-    items() {
-      this.termsOptions;
-    },
     currentItem() {
       return this.termsOptions.find(term => term.id === this.selectedTermId);
     },
@@ -100,7 +100,7 @@ export default {
       return this.$store.getters[this.imageModule + 'ontologies'];
     },
     hiddenTermsIds() {
-      return this.$store.getters[this.imageModule + 'hiddenTermsIds'];
+      return this.$store.getters[this.imageModule + 'hiddenTermsIds'] || [];
     },
     termsOptions() {
       return [...this.terms, ...this.additionalNodes].filter(term => !this.hiddenTermsIds.includes(term.id));
@@ -192,6 +192,12 @@ export default {
       if (!value) {
         this.displayType = 'TERM';
       }
+    },
+    currentItem: {
+      handler(val) {
+        console.log('AnnotationsList currentItem changed:', val);
+      },
+      immediate: true
     }
   },
   methods: {
@@ -251,7 +257,6 @@ export default {
     this.$eventBus.$on('editAnnotation', this.editAnnotationHandler);
     this.$eventBus.$on('deleteAnnotation', this.deleteAnnotationHandler);
     this.$eventBus.$on('shortkeyEvent', this.shortkeyHandler);
-    this.$store.commit(this.imageModule + 'setShowAnnotationsList', true);
   },
   beforeDestroy() {
     // unsubscribe from all events
@@ -298,7 +303,7 @@ export default {
   position: relative;
   border-bottom: 1px solid $dark-border-color;
   height: 100%;
-  width: 100%;
+  flex-grow: 1;
   background-color: $dark-bg-primary;
   color: $dark-text-primary;
 }
@@ -340,7 +345,8 @@ h2 {
 .annotations-list-sidebar {
   // padding: 10px;
   overflow-y: auto;
-  min-width: 6em;
+  min-width: 15em;
+  flex-shrink: 0;
   background-color: $dark-bg-tertiary;
   color: $dark-text-primary;
   font-size: $details-font-size;
