@@ -26,7 +26,7 @@ export default {
     return {
       links: [],
       linkMode: 'ABSOLUTE',
-      imageSelector: false,
+      imageSelector: true,
       activeImage: 0,
       indexNextImage: 0,
 

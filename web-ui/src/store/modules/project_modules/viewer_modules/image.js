@@ -171,21 +171,8 @@ export default {
       state.ontologies = state.ontologies.filter(ont => ont.id !== ontologyId);
     },
 
-    // 新增ontologyTerms相关的mutations
-    setOntologyTerms(state, ontologyTerms) {
-      state.ontologyTerms = ontologyTerms;
-    },
-
     setStyleOntologyTerms(state, formattedOntologyTerms) {
       state.style.ontologyTerms = formattedOntologyTerms;
-    },
-
-    addOntologyTerms(state, { ontologyId, terms }) {
-      state.ontologyTerms[ontologyId] = terms;
-    },
-
-    removeOntologyTerms(state, ontologyId) {
-      delete state.ontologyTerms[ontologyId];
     },
 
     // 更新ontologyTerms的mutation
@@ -197,7 +184,6 @@ export default {
           if (ontology && ontology.children && Array.isArray(ontology.children)) {
             const terms = getAllTerms(ontology);
             newOntologyTerms[ontology.id] = terms;
-            console.log('addOntologyTerms', { ontologyId: ontology.id, terms });
           } else {
             // 如果本体结构不完整，使用空数组作为terms
             newOntologyTerms[ontology.id] = [];
@@ -223,18 +209,9 @@ export default {
         dispatch('fetchSliceInstancesAround', { rank: clone[0].rank }),
       ]);
       commit('setOntologies', image.ontologies);
-      console.log('image.ontologies', image.ontologies);
       commit('updateOntologyTerms'); // 使用mutation更新ontologyTerms
 
-      // 更新style模块中的ontologyTerms
-      const imageOntologyTerms = state.ontologyTerms;
-      const formattedOntologyTerms = {};
-      for (let ontologyId in imageOntologyTerms) {
-        formattedOntologyTerms[ontologyId] = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
-      }
-
-      console.log('formattedOntologyTerms', formattedOntologyTerms);
-      commit('setStyleOntologyTerms', formattedOntologyTerms);
+      updateStyleOntologyTerms(state, commit);
     },
     async setImageInstance({ dispatch, rootState }, { image, slices }) {
       await dispatch('initialize', { image, slices });
@@ -325,15 +302,7 @@ export default {
 
       commit('updateOntologyTerms');
 
-      // 更新style模块中的ontologyTerms
-      const imageOntologyTerms = state.ontologyTerms;
-      const formattedOntologyTerms = {};
-      for (let ontologyId in imageOntologyTerms) {
-        formattedOntologyTerms[ontologyId] = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
-      }
-
-      console.log('formattedOntologyTerms', formattedOntologyTerms);
-      commit('setStyleOntologyTerms', formattedOntologyTerms);
+      updateStyleOntologyTerms(state, commit);
     },
 
     async fetchProfile({ state, commit }) {
@@ -402,20 +371,12 @@ export default {
 
       try {
         const result = await state.imageInstance.addOntology(ontologyId);
-        // 重新获取本体列表以更新状态
-        const ontologies = await state.imageInstance.fetchOntologies();
-        commit('setOntologies', ontologies);
+        // 重新获取图像实例以获得包含完整术语树（children）的本体列表
+        const image = await ImageInstance.fetch(state.imageInstance.id);
+        commit('setOntologies', image.ontologies);
         commit('updateOntologyTerms'); // 使用mutation更新ontologyTerms
 
-        // 更新style模块中的ontologyTerms
-        const imageOntologyTerms = state.ontologyTerms;
-        const formattedOntologyTerms = {};
-        for (let ontologyId in imageOntologyTerms) {
-          formattedOntologyTerms[ontologyId] = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
-        }
-
-        console.log('formattedOntologyTerms', formattedOntologyTerms);
-        commit('setStyleOntologyTerms', formattedOntologyTerms);
+        updateStyleOntologyTerms(state, commit);
 
         return result;
       } catch (error) {
@@ -436,15 +397,7 @@ export default {
         commit('removeOntology', ontologyId);
         commit('updateOntologyTerms'); // 使用mutation更新ontologyTerms
 
-        // 更新style模块中的ontologyTerms
-        const imageOntologyTerms = state.ontologyTerms;
-        const formattedOntologyTerms = {};
-        for (let ontologyId in imageOntologyTerms) {
-          formattedOntologyTerms[ontologyId] = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
-        }
-
-        console.log('formattedOntologyTerms', formattedOntologyTerms);
-        commit('setStyleOntologyTerms', formattedOntologyTerms);
+        updateStyleOntologyTerms(state, commit);
 
         return result;
       } catch (error) {
@@ -503,7 +456,7 @@ export default {
       let ontologyTerms = state.style.ontologyTerms;
 
       if (ontologyTerms && nbTerms === 1) {
-        let wrappedTerm = getters.getTermByIdFromOntologyTerms(annot.term[0]);
+        let wrappedTerm = ontologyTerms[annot.term[0]];
         if (wrappedTerm) {
           if (!wrappedTerm.visible) {
             return; // do not display annot
@@ -517,9 +470,15 @@ export default {
           styles.push(state.style.noTermStyle); // could not find term => display no term style
         }
       } else if (ontologyTerms && nbTerms > 1) {
-        for (let ontoId in ontologyTerms) {
-          if (ontologyTerms[ontoId]) {
-            let hasTermsToDisplay = ontologyTerms[ontoId].some(term => term.visible && annot.term.includes(term.id));
+        // 遍历所有关联的本体，确保每个本体下至少有一个可见的术语被包含在注释中
+        for (let ontology of state.ontologies) {
+          // 检查该本体是否有术语在 annot.term 中，并且是可见的
+          // 注意：如果注释中完全没有该本体的术语，这里逻辑上会被视为"不显示"（与原逻辑保持一致）
+          // 原逻辑：ontologyTerms[ontoId].some(...)
+          let rawTerms = state.ontologyTerms[ontology.id];
+          if (rawTerms && rawTerms.length > 0) {
+            // 检查 annot.term 中是否有属于该本体且可见的术语
+            let hasTermsToDisplay = annot.term.some(termId => ontologyTerms[termId] && ontologyTerms[termId].ontology === ontology.id && ontologyTerms[termId].visible);
             if (!hasTermsToDisplay) {
               return; // do not display
             }
@@ -618,17 +577,9 @@ export default {
       }), 'index');
     },
 
-    // 新增本体相关的getters
-    imageOntologies: state => state.ontologies,
-
     hasOntologies: state => state.ontologies && state.ontologies.length > 0,
 
     ontologyById: state => id => state.ontologies.find(ont => ont.id === id),
-
-    // 新增ontologyTerms相关的getters
-    imageOntologyTerms: state => state.ontologyTerms,
-
-    getTermsByOntologyId: state => ontologyId => state.ontologyTerms[ontologyId] || [],
 
     terms: (state) => {
       if (!state.ontologies || !Array.isArray(state.ontologies)) {
@@ -647,7 +598,6 @@ export default {
           allTerms = allTerms.concat(termsWithOntologyId);
         }
       }
-      console.log('allTerms:', allTerms);
       return allTerms;
     },
 
@@ -670,6 +620,20 @@ export default {
     controls
   }
 };
+
+function updateStyleOntologyTerms(state, commit) {
+  const imageOntologyTerms = state.ontologyTerms;
+  const formattedOntologyTerms = {};
+  for (let ontologyId in imageOntologyTerms) {
+    const terms = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
+    if (terms) {
+      terms.forEach(term => {
+        formattedOntologyTerms[term.id] = term;
+      });
+    }
+  }
+  commit('setStyleOntologyTerms', formattedOntologyTerms);
+}
 
 function findRankPage(rank) {
   return Math.ceil((rank + 1) / constants.PRELOADED_SLICES) - 1;

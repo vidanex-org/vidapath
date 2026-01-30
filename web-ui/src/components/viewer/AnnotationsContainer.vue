@@ -1,7 +1,7 @@
 <template>
-  <div class="annotations-container">
+  <div>
     <annotation-details-container 
-      v-if="isPanelDisplayed('annotation-main')" 
+      class="annotations-container"
       :index="index" 
       @select="selectAnnotation"
       @centerView="centerView({ annot: $event, sameView: true })" 
@@ -10,6 +10,18 @@
       @updateTermsOrTracks="updateTermsOrTracks" 
       @updateProperties="updateProperties" 
       @delete="handleDeletion" />
+
+     <annotations-list
+      class="annotations-table-wrapper"
+      :index="index"
+      @select="selectAnnotation"
+      @centerView="centerView"
+      @addTerm="addTerm"
+      @addTrack="addTrack"
+      @updateTermsOrTracks="updateTermsOrTracks"
+      @updateProperties="updateProperties"
+      @delete="handleDeletion"
+    />
   </div>
 </template>
 
@@ -19,8 +31,8 @@ import { Action, updateTermProperties, updateTrackProperties } from '@/utils/ann
 
 import WKT from 'ol/format/WKT';
 
+import AnnotationsList from './AnnotationsList';
 import AnnotationDetailsContainer from './AnnotationDetailsContainer';
-import SimilarAnnotation from '@/components/annotations/SimilarAnnotation';
 import { listAnnotationsInGroup, updateAnnotationLinkProperties } from '@/utils/annotation-utils';
 
 import { Annotation } from '@/api';
@@ -36,8 +48,8 @@ export default {
     };
   },
   components: {
+    AnnotationsList,
     AnnotationDetailsContainer,
-    SimilarAnnotation,
   },
   computed: {
     configUI: get('currentProject/configUI'),

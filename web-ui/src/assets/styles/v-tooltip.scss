@@ -1,3 +1,5 @@
+@import './dark-variables.scss';
+
 .v-popover {
   display: inline-block;
 }
@@ -25,7 +27,8 @@
 }
 
 .tooltip .tooltip-inner {
-  background: white;
+  background: $dark-bg-secondary;
+  color: $dark-text-primary;
   border-radius: 20px;
   padding: 0.5rem 1rem 0.4rem;
   box-shadow: 0 0 3px hsla(0,0%,4%,.1),0 0 0 1px hsla(0,0%,4%,.1);
@@ -74,7 +77,7 @@
 }
 
 .tooltip[x-placement^="top"] .tooltip-arrow::after {
-  border-color: white transparent transparent transparent;
+  border-color: $dark-bg-secondary transparent transparent transparent;
   left:-7px;
   bottom: -6px;
 }
@@ -94,7 +97,7 @@
 }
 
 .tooltip[x-placement^="bottom"] .tooltip-arrow::after {
-  border-color: transparent transparent white transparent;
+  border-color: transparent transparent $dark-bg-secondary transparent;
   left:-7px;
   top: -6px;
 }
@@ -114,7 +117,7 @@
 }
 
 .tooltip[x-placement^="right"] .tooltip-arrow::after {
-  border-color: transparent white transparent transparent;
+  border-color: transparent $dark-bg-secondary transparent transparent;
   bottom:-7px;
   left: -6px;
 }
@@ -134,7 +137,7 @@
 }
 
 .tooltip[x-placement^="left"] .tooltip-arrow::after {
-  border-color: transparent transparent transparent white;
+  border-color: transparent transparent transparent $dark-bg-secondary;
   bottom:-7px;
   right: -6px;
 }

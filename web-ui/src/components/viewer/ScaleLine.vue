@@ -71,9 +71,11 @@ export default {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@import '../../assets/styles/dark-variables';
 .scale-line {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba($dark-bg-secondary, 0.8);
+  color: $dark-text-primary;
   position: absolute;
   padding: 0.4em 0.8em;
   display: block;
@@ -87,7 +89,7 @@ export default {
 .scale-line-top {
   margin-top: 0.5em;
   box-sizing: content-box;
-  border: 2px solid black;
+  border: 2px solid $dark-text-primary;
   border-top: none;
   text-align: center;
   padding-bottom: 0.2em;
@@ -95,7 +97,7 @@ export default {
 
 .scale-line-bottom {
   box-sizing: content-box;
-  border: 2px solid black;
+  border: 2px solid $dark-text-primary;
   border-top: none;
   border-bottom: none;
   text-align: center;
@@ -115,6 +117,6 @@ export default {
 .scale-line-position {
   text-align: center;
   padding: 0 0.5em;
-  color: black !important;
+  color: $dark-text-primary !important;
 }
 </style>

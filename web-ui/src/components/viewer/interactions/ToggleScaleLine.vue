@@ -67,7 +67,7 @@ export default {
   position: absolute;
   right: 4rem;
   bottom: 1rem;
-  background: white;
+  background: transparent;
   border-radius: 2px;
   font-size: 5px;
   margin-left: 2px;

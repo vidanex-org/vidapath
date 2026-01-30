@@ -20,6 +20,102 @@
       </a>
     </div>
     <template v-if="!loading && zoom !== null">
+      <div class="map-tools">
+        <ul class="map-tools-list">
+          <li><a title="Zoom in" @click="zoomIn()"><i class="fas fa-search-plus fa-fw"></i></a></li>
+          <li><a title="Zoom out" @click="zoomOut()"><i class="fas fa-search-minus fa-fw"></i></a></li>
+          <li v-if="isPanelDisplayed('digital-zoom')">
+            <a @click="togglePanel('digital-zoom')" :class="{ active: activePanel === 'digital-zoom' }">
+              <i class="fas fa-search fa-fw"></i>
+            </a>
+            <digital-zoom class="panel-options" v-show="activePanel === 'digital-zoom'" :index="index"
+              @resetZoom="$refs.view.animate({ zoom: image.zoom })" @fitZoom="fitZoom" />
+          </li>
+          <li>
+            <a title="Rotate" @click="togglePanel('rotation')" :class="{ active: activePanel === 'rotation' }">
+              <i class="fa fa-undo fa-fw" aria-hidden="true"></i>
+            </a>
+            <rotation-selector class="panel-options" v-show="activePanel === 'rotation'" :index="index" />
+          </li>
+          <hr class="is-divider">
+          <!-- AI Analysis Panel Button -->
+          <li>
+            <a title="AI Analysis" @click="toggleAIAnalysisPanel" :class="{ active: showAIAnalysisPanel }">
+              <i class="fas fa-robot fa-fw"></i>
+            </a>
+          </li>
+          <li>
+            <a title="Pathology Report" @click="toggleReportDrawer" :class="{ active: showReportDrawer }">
+              <i class="fas fa-file-medical fa-fw"></i>
+            </a>
+          </li>
+          <hr class="is-divider" />
+          <li>
+            <a @click="togglePanel('layers')" :class="{ active: activePanel === 'layers' }">
+              <i class="fas fa-copy fa-fw"></i>
+            </a>
+            <layers-panel class="panel-options" v-show="activePanel === 'layers'" :index="index" />
+          </li>
+          <li v-if="isPanelDisplayed('color-manipulation')">
+            <a @click="togglePanel('colors')" :class="{ active: activePanel === 'colors' }">
+              <i class="fas fa-adjust fa-fw"></i>
+            </a>
+            <color-manipulation class="panel-options" v-show="activePanel === 'colors'" :index="index" />
+          </li>
+          <hr class="is-divider" />
+          <li v-if="isPanelDisplayed('info')">
+            <a @click="togglePanel('info')" :class="{ active: ['info', 'metadata'].includes(activePanel) }">
+              <i class="fas fa-info fa-fw"></i>
+            </a>
+            <information-panel class="panel-options" v-show="activePanel === 'info'" :index="index" />
+          </li>
+          <li v-if="configUI['project-tools-screenshot']">
+            <a @click="takeScreenshot()" :class="{ active: activePanel === 'screenshot' }">
+              <i class="fas fa-camera fa-fw"></i>
+            </a>
+          </li>
+          <li>
+            <a @click="toggleFullscreen">
+              <i :class="isFullscreen ? 'fas fa-compress fa-fw' : 'fas fa-expand fa-fw'"></i>
+            </a>
+          </li>
+          <li v-if="!$keycloak.hasTemporaryToken">
+            <a @click="ShareByLink()">
+              <i class="fa fa-share-alt fa-fw" aria-hidden="true"></i>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <vl-map :data-projection="projectionName" :load-tiles-while-animating="true" :load-tiles-while-interacting="true"
+        :keyboard-event-target="document" @pointermove="projectedMousePosition = $event.coordinate"
+        @mounted="updateKeyboardInteractions" ref="map">
+        <vl-view :center.sync="center" :zoom.sync="zoom" :rotation.sync="rotation" :max-zoom="maxZoom"
+          :max-resolution="Math.pow(2, image.zoom)" :extent="extent" :projection="projectionName"
+          @mounted="viewMounted()" ref="view" />
+        <vl-layer-tile :extent="extent" @mounted="addOverviewMap" ref="baseLayer">
+          <vl-source-cytomine :projection="projectionName" :url="baseLayerURL" :tile-load-function="tileLoadFunction"
+            :size="imageSize" :extent="extent" :nb-resolutions="image.zoom" ref="baseSource" @mounted="setBaseSource()"
+            :transition="0" :tile-size="[tileSize, tileSize]" />
+        </vl-layer-tile>
+        <annotation-layer v-for="layer in selectedLayers" :key="'layer-' + layer.id" :index="index" :layer="layer" />
+        <select-interaction v-if="activeSelectInteraction" :index="index" />
+        <draw-interaction v-if="activeDrawInteraction" :index="index" />
+        <modify-interaction v-if="activeModifyInteraction" :index="index" />
+      </vl-map>
+      <div v-if="configUI['project-tools-main']" class="draw-tools">
+        <draw-tools :index="index" @screenshot="takeScreenshot()" />
+      </div>
+      <scale-line v-show="scaleLineCollapsed" :image="image" :zoom="zoom" :mousePosition="projectedMousePosition" />
+      <magnification-selector v-if="image.magnification" :image="image" :zoom="zoom"
+        @setMagnification="setMagnification" @fit="fitZoom" />
+      <toggle-scale-line :index="index" />
+      <annotations-container :index="index" @centerView="centerViewOnAnnot" />
+      <div class="custom-overview" ref="overview">
+        <p class="image-name" :class="{ hidden: overviewCollapsed }">
+          <image-name :image="image" />
+        </p>
+      </div>
+
       <!-- AI Analysis Panel -->
       <div v-if="showAIAnalysisPanel" class="ai-analysis-panel">
         <pathology-viewer :project="project" :index="index" />
@@ -28,194 +124,34 @@
       <!-- Share Project Modal -->
       <share-project-modal :active="shareModalActive" :project="project" @update:active="shareModalActive = $event" />
 
-      <div class="map-tools">
-        <ul class="map-tools-list">
-          <li><a title="Zoom in" @click="zoomIn()"><i class="fas fa-search-plus"></i></a></li>
-          <li><a title="Zoom out" @click="zoomOut()"><i class="fas fa-search-minus"></i></a></li>
-          <li><a title="Pan" @click="activatePan()"><i class="fas fa-arrows-alt"></i></a></li>
+      <!-- Add Ontology Modal -->
+      <add-ontology-modal :active="showAddOntologyModal" :index="index" @close="showAddOntologyModal = false" />
 
-          <li v-if="isPanelDisplayed('digital-zoom')">
-            <a @click="togglePanel('digital-zoom')" :class="{ active: activePanel === 'digital-zoom' }">
-              <i class="fas fa-search"></i>
-            </a>
-            <digital-zoom class="panel-options" v-show="activePanel === 'digital-zoom'" :index="index"
-              @resetZoom="$refs.view.animate({ zoom: image.zoom })" @fitZoom="fitZoom" />
-          </li>
-          <li>
-            <a title="Rotate" @click="togglePanel('rotation')" :class="{ active: activePanel === 'rotation' }">
-              <i class="fa fa-undo" aria-hidden="true"></i>
-            </a>
-            <rotation-selector class="panel-options" v-show="activePanel === 'rotation'" :index="index" />
-          </li>
-          <hr class="is-divider">
-
-          <li>
-            <a @click="togglePanel('layers')" :class="{ active: activePanel === 'layers' }">
-              <i class="fas fa-copy"></i>
-            </a>
-            <layers-panel class="panel-options" v-show="activePanel === 'layers'" :index="index"
-              />
-          </li>
-
-          <li v-if="isPanelDisplayed('color-manipulation')">
-            <a @click="togglePanel('colors')" :class="{ active: activePanel === 'colors' }">
-              <i class="fas fa-adjust"></i>
-            </a>
-            <color-manipulation class="panel-options" v-show="activePanel === 'colors'" :index="index" />
-          </li>
-
-          <!-- <li v-if="isPanelDisplayed('ontology')">
-            <a @click="togglePanel('ontology')" :class="{ active: activePanel === 'ontology' }">
-              <i class="fa fa-tags" aria-hidden="true"></i>
-            </a>
-            <ontology-panel class="panel-options" v-show="activePanel === 'ontology'" :index="index" />
-          </li> -->
-
-          <li v-if="isPanelDisplayed('ontology')">
-            <a @click="togglePanel('ontology-terms')" :class="{ active: activePanel === 'ontology-terms' }">
-              <i class="fa fa-hashtag" aria-hidden="true"></i>
-            </a>
-            <ontology-terms-panel class="panel-options" v-show="activePanel === 'ontology-terms'" :index="index" />
-          </li>
-
-          <!-- AI Analysis Panel Button -->
-          <li>
-            <a title="AI Analysis" @click="toggleAIAnalysisPanel" :class="{ active: showAIAnalysisPanel }">
-              <i class="fas fa-robot"></i>
-            </a>
-          </li>
-
-          <!-- <li v-if="isPanelDisplayed('property')">
-            <a @click="togglePanel('properties')" :class="{ active: activePanel === 'properties' }">
-              <i class="fas fa-tag"></i>
-            </a>
-            <properties-panel class="panel-options" v-show="activePanel === 'properties'" :index="index" />
-          </li> -->
-
-          <hr class="is-divider">
-          <li v-if="isPanelDisplayed('info')">
-            <a @click="togglePanel('info')" :class="{ active: ['info', 'metadata'].includes(activePanel) }">
-              <i class="fas fa-info"></i>
-            </a>
-            <information-panel class="panel-options" v-show="activePanel === 'info'" :index="index" />
-          </li>
-
-          <li v-if="configUI['project-tools-screenshot']">
-            <a @click="takeScreenshot()" :class="{ active: activePanel === 'screenshot' }">
-              <i class="fas fa-camera"></i>
-            </a>
-          </li>
-
-          <li>
-            <a @click="toggleFullscreen">
-              <i :class="isFullscreen ? 'fas fa-compress' : 'fas fa-expand'"></i>
-            </a>
-          </li>
-          <li v-if="!$keycloak.hasTemporaryToken">
-            <a @click="ShareByLink()">
-              <i class="fa fa-share-alt" aria-hidden="true"></i>
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <vl-map :data-projection="projectionName" :load-tiles-while-animating="true" :load-tiles-while-interacting="true"
-        :keyboard-event-target="document" @pointermove="projectedMousePosition = $event.coordinate"
-        @mounted="updateKeyboardInteractions" ref="map">
-
-        <vl-view :center.sync="center" :zoom.sync="zoom" :rotation.sync="rotation" :max-zoom="maxZoom"
-          :max-resolution="Math.pow(2, image.zoom)" :extent="extent" :projection="projectionName"
-          @mounted="viewMounted()" ref="view" />
-
-        <vl-layer-tile :extent="extent" @mounted="addOverviewMap" ref="baseLayer">
-          <vl-source-cytomine :projection="projectionName" :url="baseLayerURL" :tile-load-function="tileLoadFunction"
-            :size="imageSize" :extent="extent" :nb-resolutions="image.zoom" ref="baseSource" @mounted="setBaseSource()"
-            :transition="0" :tile-size="[tileSize, tileSize]" />
-        </vl-layer-tile>
-
-        <!--      <vl-layer-image>-->
-        <!--        <vl-source-raster-->
-        <!--          v-if="baseSource && colorManipulationOn"-->
-        <!--          :sources="[baseSource]"-->
-        <!--          :operation="operation"-->
-        <!--          :lib="lib"-->
-        <!--        />-->
-        <!--      </vl-layer-image>-->
-
-        <annotation-layer v-for="layer in selectedLayers" :key="'layer-' + layer.id" :index="index" :layer="layer" />
-
-        <select-interaction v-if="activeSelectInteraction" :index="index" />
-        <draw-interaction v-if="activeDrawInteraction" :index="index" />
-        <modify-interaction v-if="activeModifyInteraction" :index="index" />
-
-      </vl-map>
-
-      <div v-if="configUI['project-tools-main']" class="draw-tools">
-        <draw-tools :index="index" @screenshot="takeScreenshot()" />
-      </div>
-
-      <scale-line v-show="scaleLineCollapsed" :image="image" :zoom="zoom" :mousePosition="projectedMousePosition" />
-
-      <toggle-scale-line :index="index" />
-
-      <annotations-container :index="index" @centerView="centerViewOnAnnot" />
-
-      <div class="custom-overview" ref="overview">
-        <p class="image-name" :class="{ hidden: overviewCollapsed }">
-          <image-name :image="image" />
-        </p>
-      </div>
+      <!-- Pathology Report Drawer -->
+      <pathology-report-drawer :active="showReportDrawer" @close="showReportDrawer = false" />
     </template>
   </div>
 </template>
-
 <script>
 import { get } from '@/utils/store-helpers';
 import _ from 'lodash';
-
 import ImageName from '@/components/image/ImageName';
 import AnnotationLayer from './AnnotationLayer';
-import RotationSelector from './RotationSelector';
 import ScaleLine from './ScaleLine';
-import DrawTools from './DrawTools';
-import ImageControls from './ImageControls';
-import AnnotationsContainer from './AnnotationsContainer';
-import AnnotationDetailsContainer from './AnnotationDetailsContainer';
-
-import InformationPanel from './panels/InformationPanel';
-import MetadataPanel from './panels/MetadataPanel.vue';
-import DigitalZoom from './panels/DigitalZoom';
-import ColorManipulation from './panels/ColorManipulation';
-import LinkPanel from './panels/LinkPanel';
-import LayersPanel from './panels/LayersPanel';
-import OntologyPanel from './panels/OntologyPanel';
-import OntologyTermsPanel from './panels/OntologyTermsPanel.vue';
-import PropertiesPanel from './panels/PropertiesPanel';
-import FollowPanel from './panels/FollowPanel';
-import ReviewPanel from './panels/ReviewPanel';
-
+import MagnificationSelector from './MagnificationSelector';
 import SelectInteraction from './interactions/SelectInteraction';
 import DrawInteraction from './interactions/DrawInteraction';
 import ModifyInteraction from './interactions/ModifyInteraction';
 import ToggleScaleLine from './interactions/ToggleScaleLine';
-
-import PathologyViewer from './PathologyViewer.vue';
-import ShareProjectModal from '@/components/project/ShareProjectModal.vue';
-
 import { addProj, createProj, getProj } from 'vuelayers/lib/ol-ext';
-
 import View from 'ol/View';
 import OverviewMap from 'ol/control/OverviewMap';
 import { KeyboardPan, KeyboardZoom } from 'ol/interaction';
 import { noModifierKeys, targetNotEditable } from 'ol/events/condition';
 import WKT from 'ol/format/WKT';
-
 import { Cytomine, ImageConsultation, Annotation, UserPosition, SliceInstance } from '@/api';
-
 // import {constLib, operation} from '@/utils/color-manipulation.js';
-
 import constants from '@/utils/constants.js';
-
 export default {
   name: 'cytomine-image',
   props: {
@@ -223,59 +159,43 @@ export default {
   },
   components: {
     ImageName,
-
     AnnotationLayer,
-
-    RotationSelector,
     ScaleLine,
-    DrawTools,
-    ImageControls,
-    AnnotationsContainer,
-    AnnotationDetailsContainer,
-
-    InformationPanel,
-    MetadataPanel,
-    DigitalZoom,
-    ColorManipulation,
-    LinkPanel,
-    LayersPanel,
-    OntologyPanel,
-    OntologyTermsPanel,
-    PropertiesPanel,
-    FollowPanel,
-    ReviewPanel,
-
+    MagnificationSelector,
     SelectInteraction,
     DrawInteraction,
     ModifyInteraction,
     ToggleScaleLine,
-
-    PathologyViewer,
-    ShareProjectModal
+    // 异步加载非核心组件，加快首屏渲染速度
+    RotationSelector: () => import('./RotationSelector'),
+    DrawTools: () => import('./DrawTools'),
+    AnnotationsContainer: () => import('./AnnotationsContainer'),
+    InformationPanel: () => import('./panels/InformationPanel'),
+    DigitalZoom: () => import('./panels/DigitalZoom'),
+    ColorManipulation: () => import('./panels/ColorManipulation'),
+    LayersPanel: () => import('./panels/LayersPanel'),
+    PathologyViewer: () => import('./PathologyViewer.vue'),
+    ShareProjectModal: () => import('@/components/project/ShareProjectModal.vue'),
+    PathologyReportDrawer: () => import('./PathologyReportDrawer.vue'),
+    AddOntologyModal: () => import('./panels/AddOntologyModal.vue')
   },
   data() {
     return {
       minZoom: 0,
-
       projectedMousePosition: [0, 0],
-
       baseSource: null,
       routedAnnotation: null,
       selectedAnnotation: null,
-
       timeoutSavePosition: null,
-
       loading: true,
-
       overview: null,
-
       format: new WKT(),
-
       isFullscreen: false,
-
       // AI Analysis Panel
       showAIAnalysisPanel: false,
-
+      // Pathology Report Drawer
+      showReportDrawer: false,
+      showAddOntologyModal: false,
       // Share Modal
       shareModalActive: false,
       layers: [], // Array<User> (representing user layers)
@@ -350,7 +270,6 @@ export default {
     maxZoom() {
       return this.$store.getters[this.imageModule + 'maxZoom'];
     },
-
     center: {
       get() {
         return this.imageWrapper.view.center;
@@ -375,11 +294,9 @@ export default {
         this.$store.dispatch(this.viewerModule + 'setRotation', { index: this.index, rotation: Number(value) });
       }
     },
-
     viewState() {
       return { center: this.center, zoom: this.zoom, rotation: this.rotation };
     },
-
     extent() {
       return [0, 0, this.image.width, this.image.height];
     },
@@ -413,13 +330,11 @@ export default {
       return (tile, src) => {
         const xhr = new XMLHttpRequest();
         xhr.responseType = 'blob';
-
         // 检查是否为临时访问令牌用户
         if (this.$keycloak && this.$keycloak.hasTemporaryToken) {
           // 从URL中提取access_token并添加到请求URL中
           const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
           const accessToken = urlParams.get('access_token');
-
           if (accessToken) {
             const separator = src.includes('?') ? '&' : '?';
             const urlWithToken = `${src}${separator}access_token=${accessToken}`;
@@ -432,7 +347,6 @@ export default {
           xhr.open('GET', src);
           xhr.setRequestHeader('Authorization', 'Bearer ' + this.shortTermToken);
         }
-
         xhr.addEventListener('load', () => {
           const url = URL.createObjectURL(xhr.response);
           const tileImage = tile.getImage();
@@ -442,26 +356,12 @@ export default {
         xhr.send();
       };
     },
-
-    // layersToPreload() {
-    //   let layers = [];
-    //   let annot = this.selectedAnnotation || this.routedAnnotation;
-    //   if (annot) {
-    //     layers.push(annot.type === AnnotationType.REVIEWED ? -1 : (annot.username));
-    //   }
-    //   if (this.routedAction === 'review' && !layers.includes(-1)) {
-    //     layers.push(-1);
-    //   }
-    //   return layers;
-    // },
-
     overviewCollapsed() {
       return this.overview ? this.overview.getCollapsed() : this.imageWrapper.view.overviewCollapsed;
     },
     scaleLineCollapsed() {
       return !this.imageWrapper.view.scaleLineCollapsed;
     },
-
     correction() {
       return ['correct-add', 'correct-remove'].includes(this.activeEditTool);
     },
@@ -506,6 +406,11 @@ export default {
     zoomOut() {
       this.$refs.view.animate({ zoom: this.zoom - 1, duration: 250 });
     },
+    setMagnification(mag) {
+      if (!this.image || !this.image.magnification) return;
+      let targetZoom = this.image.zoom + Math.log2(mag / this.image.magnification);
+      this.$refs.view.animate({ zoom: targetZoom, duration: 500 });
+    },
     activatePan() {
       this.$store.dispatch(this.imageModule + 'draw/activateTool', 'pan');
     },
@@ -515,25 +420,23 @@ export default {
       }
       this.zoom = this.idealZoom;
     },
-
     toggleAIAnalysisPanel() {
       this.showAIAnalysisPanel = !this.showAIAnalysisPanel;
     },
-
+    toggleReportDrawer() {
+      this.showReportDrawer = !this.showReportDrawer;
+    },
     ShareByLink() {
       this.shareModalActive = true;
     },
-
     async updateMapSize() {
       await this.$nextTick();
       if (this.$refs.map) {
         this.$refs.map.updateSize();
       }
     },
-
     async updateKeyboardInteractions() {
       await this.$refs.map.$createPromise; // wait for ol.Map to be created
-
       this.$refs.map.$map.getInteractions().forEach(interaction => {
         if (interaction instanceof KeyboardPan || interaction instanceof KeyboardZoom) {
           interaction.condition_ = (mapBrowserEvent) => {
@@ -545,7 +448,6 @@ export default {
         }
       });
     },
-
     async viewMounted() {
       await this.$refs.view.$createPromise; // wait for ol.View to be created
       if (this.routedAnnotation) {
@@ -553,22 +455,17 @@ export default {
       }
       this.savePosition();
     },
-
     async setBaseSource() {
       await this.$refs.baseSource.$createPromise;
       this.baseSource = this.$refs.baseSource.$source;
     },
-
     async addOverviewMap() {
       if (!this.isPanelDisplayed('overview')) {
         return;
       }
-
       await this.$refs.map.$createPromise; // wait for ol.Map to be created
       await this.$refs.baseLayer.$createPromise; // wait for ol.Layer to be created
-
       let map = this.$refs.map.$map;
-
       this.overview = new OverviewMap({
         view: new View({ projection: this.projectionName }),
         layers: [this.$refs.baseLayer.$layer],
@@ -577,23 +474,19 @@ export default {
         collapsed: this.imageWrapper.view.overviewCollapsed
       });
       map.addControl(this.overview);
-
       this.overview.getOverviewMap().on(('click'), (evt) => {
         let size = map.getSize();
         map.getView().centerOn(evt.coordinate, size, [size[0] / 2, size[1] / 2]);
       });
     },
-
     toggleOverview() {
       if (this.overview) {
         this.overview.setCollapsed(!this.imageWrapper.view.overviewCollapsed);
       }
     },
-
     togglePanel(panel) {
       this.$store.commit(this.imageModule + 'togglePanel', panel);
     },
-
     savePosition: _.debounce(async function () {
       if (this.$refs.view) {
         let extent = this.$refs.view.$view.calculateExtent(); // [minX, minY, maxX, maxY]
@@ -617,19 +510,16 @@ export default {
           console.log(error);
           this.$notify({ type: 'error', text: this.$t('notif-error-save-user-position') });
         }
-
         clearTimeout(this.timeoutSavePosition);
         this.timeoutSavePosition = setTimeout(this.savePosition, constants.SAVE_POSITION_IN_IMAGE_INTERVAL);
       }
     }, 500),
-
     fitZoom() {
       this.$refs.view.animate({
         zoom: this.idealZoom,
         center: [this.image.width / 2, this.image.height / 2]
       });
     },
-
     async centerViewOnAnnot(annot, duration) {
       if (annot.image === this.image.id) {
         if (!annot.location) {
@@ -639,25 +529,20 @@ export default {
             annot.location = decodeURIComponent(atob(annot.location));
           }
         }
-
         if (annot.project !== this.project.id) {
           await this.$router.push(`/project/${annot.project}/image/${annot.image}/annotation/${annot.id}`);
         }
-
         let geometry = this.format.readGeometry(annot.location);
         await this.$refs.view.fit(geometry, { duration, padding: [10, 10, 10, 10], maxZoom: this.image.zoom });
-
         if (!Object.prototype.hasOwnProperty.call(annot, 'centroid')) {
           return;
         }
-
         // HACK: center set by view.fit() is incorrect => reset it manually
         this.center = (geometry.getType() === 'Point') ? geometry.getFirstCoordinate()
           : [annot.centroid.x, annot.centroid.y];
         // ---
       }
     },
-
     async selectAnnotationHandler({ index, annot, center = false, showComments = false }) {
       if (this.index === index && annot.image === this.image.id) {
         try {
@@ -666,22 +551,18 @@ export default {
             //in case annotation slice has not been loaded
             annot = await Annotation.fetch(annot.id);
           }
-
           if (!this.sliceIds.includes(annot.slice)) {
             let slice = await SliceInstance.fetch(annot.slice);
             await this.$store.dispatch(this.imageModule + 'setActiveSlice', slice);
             this.$eventBus.$emit('reloadAnnotations', { idImage: this.image.id, hard: true });
             sliceChange = true;
           }
-
           if (showComments) {
             this.$store.commit(this.imageModule + 'setShowComments', annot);
           }
-
           this.selectedAnnotation = annot; // used to pre-load annot layer
           this.$store.commit(this.imageModule + 'setAnnotToSelect', annot);
           this.$eventBus.$emit('selectAnnotationInLayer', { index, annot });
-
           if (center) {
             await this.viewMounted();
             let duration = (sliceChange) ? undefined : 500;
@@ -693,7 +574,6 @@ export default {
         }
       }
     },
-
     isPanelDisplayed(panel) {
       return this.configUI[`project-explore-${panel}`];
     },
@@ -701,7 +581,6 @@ export default {
       if (!key.startsWith('toggle-all-') && !this.isActiveImage) { // shortkey should only be applied to active map
         return;
       }
-
       key = key.replace('toggle-all-', 'toggle-');
       switch (key) {
         case 'toggle-information':
@@ -734,6 +613,11 @@ export default {
             this.togglePanel('ontology');
           }
           return;
+        case 'toggle-annotations-list':
+          if (this.isPanelDisplayed('annotations-list')) {
+            this.togglePanel('annotations-list');
+          }
+          return;
         case 'toggle-properties':
           if (this.isPanelDisplayed('property')) {
             this.togglePanel('properties');
@@ -761,57 +645,16 @@ export default {
       // Set image container as actual height in pixel (not in percent) to avoid image distortion when retrieving canvas
       let containerHeight = document.querySelector('.map-container').clientHeight;
       document.querySelector('.map-container').style.height = containerHeight + 'px';
-
       let a = document.createElement('a');
       a.href = await this.$html2canvas(document.querySelector('.ol-unselectable'), { type: 'dataURL' });
       let imageName = 'image_' + this.image.id.toString() + '_project_' + this.image.project.toString() + '.png';
       a.download = imageName;
       a.click();
-
       // Reset container css values as previous
       document.querySelector('.map-container').style.height = '';
     },
-
     toggleFullscreen() {
       const element = this.$el;
-
-      if (!document.fullscreenElement &&
-        !document.webkitFullscreenElement &&
-        !document.mozFullScreenElement &&
-        !document.msFullscreenElement) {
-        // 进入全屏
-        if (element.requestFullscreen) {
-          element.requestFullscreen();
-        } else if (element.webkitRequestFullscreen) {
-          element.webkitRequestFullscreen();
-        } else if (element.mozRequestFullScreen) {
-          element.mozRequestFullScreen();
-        } else if (element.msRequestFullscreen) {
-          element.msRequestFullscreen();
-        }
-      } else {
-        // 退出全屏
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-          document.webkitExitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-          document.mozCancelFullScreen();
-        } else if (document.msExitFullscreen) {
-          document.msExitFullscreen();
-        }
-      }
-    },
-
-    handleFullscreenChange() {
-      this.isFullscreen = !!(document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.mozFullScreenElement ||
-        document.msFullscreenElement);
-    },
-    toggleFullscreen() {
-      const element = this.$el;
-
       if (!document.fullscreenElement &&
         !document.webkitFullscreenElement &&
         !document.mozFullScreenElement &&
@@ -863,7 +706,6 @@ export default {
       let projection = createProj({ code: this.projectionName, units: 'pixels', extent: this.extent });
       addProj(projection);
     }
-
     if (this.routedAction === 'review') {
       this.togglePanel('review');
       if (!this.image.inReview) {
@@ -877,13 +719,11 @@ export default {
       }
       this.$store.commit(this.imageModule + 'setReviewMode', true);
     }
-
     // remove all selected features in order to reselect them when they will be added to the map (otherwise,
     // issue with the select interaction)
     this.selectedLayers.forEach(layer => {
       this.$store.commit(this.imageModule + 'removeLayerFromSelectedFeatures', { layer, cache: true });
     });
-
     let annot = this.imageWrapper.routedAnnotation;
     if (!annot) {
       let idRoutedAnnot = this.$route.params.idAnnotation;
@@ -899,14 +739,12 @@ export default {
         }
       }
     }
-
     if (annot) {
       if (Object.prototype.hasOwnProperty.call(annot, 'annotationLayer')) {
         let response = await Cytomine.instance.api.get(`/annotation-layers/${annot.annotationLayer}/task-run-layer`);
         let taskRunLayer = response.data;
         annot.image = taskRunLayer.image;
       }
-
       try {
         if (annot.image === this.image.id) {
           if (!this.sliceIds.includes(annot.slice) && Object.prototype.hasOwnProperty.call(annot, 'slice')) {
@@ -919,36 +757,24 @@ export default {
           }
           this.$store.commit(this.imageModule + 'setAnnotToSelect', annot);
         }
-
         this.$store.commit(this.imageModule + 'clearRoutedAnnotation');
       } catch (error) {
         console.log(error);
         this.$notify({ type: 'error', text: this.$t('notif-error-target-annotation') });
       }
     }
-
-    try {
-      await new ImageConsultation({ image: this.image.id }).save();
-    } catch (error) {
+    // 不阻塞初始化流程，异步保存浏览记录
+    new ImageConsultation({ image: this.image.id }).save().catch(error => {
       console.log(error);
-      this.$notify({ type: 'error', text: this.$t('notif-error-save-image-consultation') });
-    }
+      // 这种非关键性错误可以不打扰用户，或者保留通知
+      // this.$notify({ type: 'error', text: this.$t('notif-error-save-image-consultation') });
+    });
 
-    // try {
-    //   await this.fetchLayers();
-    // } catch (error) {
-    //   console.log(error);
-    //   this.$notify({ type: 'error', text: this.$t('notif-error-loading-annotation-layers') });
-    //   return;
-    // }
-
-    // this.layers[0].visible = true;
-    // this.layers[0].drawOn = true;
-
-    // this.$store.dispatch(this.imageModule + 'addLayer', this.layers[0]);
-    // console.log('layers', this.layers);
-    // console.log('imageWrapper.layers',this.imageWrapper.layers);
-
+    // 异步加载图层，不阻塞界面渲染
+    this.fetchLayers().catch(error => {
+      console.log(error);
+      this.$notify({ type: 'error', text: this.$t('notif-error-loading-annotation-layers') });
+    });
     this.loading = false;
   },
   mounted() {
@@ -956,8 +782,8 @@ export default {
     this.$eventBus.$on('shortkeyEvent', this.shortkeyHandler);
     this.$eventBus.$on('selectAnnotation', this.selectAnnotationHandler);
     this.$eventBus.$on('close-metadata', () => this.$store.commit(this.imageModule + 'togglePanel', 'info'));
+    this.$eventBus.$on('openAddOntologyModal', () => this.showAddOntologyModal = true);
     this.setInitialZoom();
-
     // 添加全屏事件监听器
     document.addEventListener('fullscreenchange', this.handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange);
@@ -969,8 +795,8 @@ export default {
     this.$eventBus.$off('shortkeyEvent', this.shortkeyHandler);
     this.$eventBus.$off('selectAnnotation', this.selectAnnotationHandler);
     this.$eventBus.$off('close-metadata');
+    this.$eventBus.$off('openAddOntologyModal');
     clearTimeout(this.timeoutSavePosition);
-
     // 移除全屏事件监听器
     document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
     document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
@@ -979,12 +805,10 @@ export default {
   }
 };
 </script>
-
 <style lang="scss">
 @import '~vuelayers/lib/style.css';
 @import '../../assets/styles/colors';
 @import '../../assets/styles/dark-variables';
-
 $widthPanelBar: 2.8rem;
 // Map to global variables
 $backgroundPanelBar: $dark-wapper-bg;
@@ -1012,6 +836,21 @@ $colorOpenedPanelLink: $primary;
     left: 50%;
     transform: translate(-50%, -50%);
     max-width: 90vw;
+  }
+}
+
+/* Mobile adaptation for AI Panel */
+@media (max-width: 768px) {
+  .ai-analysis-panel {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 70vh;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
   }
 }
 
@@ -1046,6 +885,21 @@ $colorOpenedPanelLink: $primary;
   z-index: 30;
 }
 
+@media (max-width: 768px) {
+  .draw-tools {
+    left: 10px;
+    right: 10px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar for cleaner look */
+    scrollbar-width: none; 
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
 .broadcast {
   position: absolute;
   right: 4.5rem;
@@ -1069,9 +923,8 @@ $colorOpenedPanelLink: $primary;
   left: $widthPanelBar;
   width: 24em;
   // min-height: 5em;
-  background: $dark-bg-primary;
+  background: rgba($dark-bg-primary, 0.9);
   color: $dark-text-primary;
-  opacity: 0.9;
   padding: 0.75em;
   border-radius: 5px;
   z-index: 100;
@@ -1092,8 +945,45 @@ $colorOpenedPanelLink: $primary;
   }
 }
 
-/* ----- Metadata panel ---- */
+/* Mobile adaptation for Side Panels (Bottom Sheet style) */
+@media (max-width: 768px) {
+  .panel-options {
+    position: fixed; /* Break out of the relative parent */
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-height: 60vh;
+    overflow-y: auto;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000; /* Ensure it's on top */
+  }
+}
 
+.annotations-list-panel-container {
+  position: absolute;
+  top: -30vh;
+  left: 60px;
+  background: $dark-bg-primary;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 80vh;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+/* Responsive styles for annotations list panel */
+@media (max-width: 768px) {
+  .annotations-list-panel-container {
+    // top: 50%;
+    // left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 90vw;
+  }
+}
+
+/* ----- Metadata panel ---- */
 .panel-metadata {
   position: absolute;
   top: -1.5em;
@@ -1106,7 +996,6 @@ $colorOpenedPanelLink: $primary;
 }
 
 /* ----- CUSTOM STYLE FOR OL CONTROLS ----- */
-
 .ol-zoom {
   display: none;
 }
@@ -1137,7 +1026,7 @@ $colorOpenedPanelLink: $primary;
   position: absolute;
   bottom: 0.5em;
   left: 4em;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba($dark-bg-secondary, 0.8);
   display: flex;
   flex-direction: column;
   border-radius: 4px;
@@ -1160,6 +1049,12 @@ $colorOpenedPanelLink: $primary;
     &.hidden {
       display: none;
     }
+  }
+}
+
+@media (max-width: 768px) {
+  .custom-overview {
+    display: none; /* Hide overview on mobile */
   }
 }
 

@@ -13,8 +13,8 @@
  limitations under the License.-->
 
 <template>
-
-  <div class="image-selector-wrapper" :class="{ collapsed: collapsed }">
+  <div class="image-selector-container">
+    <div class="image-selector-wrapper" :class="{ collapsed: collapsed }">
       <div>
         <div class="card" v-for="image in images" :key="image.id" :class="{active: alreadyAdded(image)}">
           <a
@@ -31,41 +31,31 @@
         </button> -->
         <!-- <div class="space">&nbsp;</div> -->
       </div>
+    </div>
+    <div class="image-selector-opener" @click="collapsed = !collapsed" :title="collapsed ? $t('expand') : $t('collapse')">
+      <i class="fas" :class="collapsed ? 'fa-angle-right' : 'fa-angle-left'"></i>
+    </div>
   </div>
 </template>
 
 <script>
-import {get,syncMultiselectFilter} from '@/utils/store-helpers';
+import {get} from '@/utils/store-helpers';
 import {IMAGE_FORMAT} from '@/utils/image-utils';
 
 import ImageName from '@/components/image/ImageName';
-import CytomineMultiselect from '@/components/form/CytomineMultiselect';
-import {ImageGroupCollection, ImageInstanceCollection, TagCollection} from '@/api';
+import {ImageInstanceCollection} from '@/api';
 import _ from 'lodash';
 import {appendShortTermToken} from '@/utils/token-utils.js';
-import {ref} from 'vue';
-
-const storeOptions = {rootModuleProp: 'storeModule'};
-const localSyncMultiselectFilter = (filterName, options) => syncMultiselectFilter(null, filterName, options, storeOptions);
 
 export default {
   name: 'image-selector',
   components: {
-    ImageName,
-    CytomineMultiselect
-  },
-  setup() {
-    const collapsed = ref(true);
-    return { collapsed };
+    ImageName
   },
   data() {
     return {
       images: [],
-      availableTags:[],
-      imageGroups: [],
-      searchString: '',
-      selectedImageGroups: [],
-      nbImagesDisplayed: 0,
+      nbImagesDisplayed: 20,
       nbFilteredImages: 0,
       loading: true,
       error: false
@@ -74,10 +64,6 @@ export default {
   computed: {
     project: get('currentProject/project'),
     shortTermToken: get('currentUser/shortTermToken'),
-    selectedTags: localSyncMultiselectFilter('selectedTags', 'availableTags'),
-    storeModule() {
-      return this.$store.getters['currentProject/currentProjectModule'] + 'listImages';
-    },
     viewerModule() {
       return this.$store.getters['currentProject/currentViewerModule'];
     },
@@ -99,34 +85,15 @@ export default {
     },
     viewerImagesIds() {
       return Object.values(this.$store.getters['currentProject/currentViewer'].images).map(image => image?.imageInstance?.id);
-    },
-    availableImageGroups() {
-      return [{id: 'null', name: this.$t('no-image-group')}, ...this.imageGroups];
     }
   },
   watch: {
-    searchString() {
-      this.fetchImages();
-    },
-    selectedImageGroups() {
-      this.fetchImages();
-    },
     nbImagesDisplayed() {
       this.fetchImages();
-    },
-    async selectedTags() {
-      if (!this.selectedTags.length) {
-        this.images = [];
-      } else {
-        await this.fetchImages();
-      }
     }
   },
   methods: {
     appendShortTermToken,
-    debounceSearchString: _.debounce(async function (value) {
-      this.searchString = value;
-    }, 500),
     async addImage(image) {
       try {
         // 检查图像是否已经添加到查看器中
@@ -138,14 +105,12 @@ export default {
             this.$store.getters['currentProject/currentViewer'].images[index].imageInstance.id === image.id
           );
           this.$store.commit(this.viewerModule + 'setActiveImage', imageIndex);
-          this.imageSelectorEnabled = false;
         } else {
           // 如果图像不存在，替换当前活动图像
           await image.fetch(); // refetch image to ensure we have latest version
           let slice = await image.fetchReferenceSlice();
           let activeImageIndex = this.$store.getters['currentProject/currentViewer'].activeImage;
           await this.$store.dispatch(`${this.viewerModule}images/${activeImageIndex}/setImageInstance`, {image, slices: [slice]});
-          this.imageSelectorEnabled = false;
         }
       } catch (error) {
         console.log(error);
@@ -166,32 +131,9 @@ export default {
           order: 'asc',
         });
 
-        if (this.searchString) {
-          collection['name'] = {
-            ilike: encodeURIComponent(this.searchString)
-          };
-        }
-
-        if (this.selectedTags.length > 0) {
-          collection['tag'] = {
-            in: this.selectedTags.map(option => option.id).join()
-          };
-        }
-
-        if (this.selectedImageGroups.length > 0 && this.selectedImageGroups.length !== this.availableImageGroups.length) {
-          collection['imageGroup'] = {
-            in: this.selectedImageGroups.map(option => option.id).join()
-          };
-        }
-
-        if (this.selectedImageGroups.length === 0) {
-          this.images = [];
-          this.nbFilteredImages = 0;
-        } else {
-          let data = (await collection.fetchPage(0));
-          this.images = data.array;
-          this.nbFilteredImages = data.totalNbItems;
-        }
+        let data = (await collection.fetchPage(0));
+        this.images = data.array;
+        this.nbFilteredImages = data.totalNbItems;
       } catch (error) {
         console.log(error);
         this.error = true;
@@ -200,22 +142,13 @@ export default {
         this.loading = false;
       }
     },
-    async fetchImageGroups() {
-      this.imageGroups = (await ImageGroupCollection.fetchAll({
-        filterKey: 'project',
-        filterValue: this.project.id
-      })).array.filter(group => group.numberOfImages > 0);
-    },
-    async fetchTags() {
-      this.availableTags = [{id: 'null', name: this.$t('no-tag')}, ...(await TagCollection.fetchAll()).array];
-    },
 
     more() {
       this.nbImagesDisplayed += 20;
     },
 
     toggle() {
-      this.imageSelectorEnabled = !this.imageSelectorEnabled;
+      this.collapsed = !this.collapsed;
     },
 
     shortkeyHandler(key) {
@@ -233,12 +166,7 @@ export default {
   },
   async created() {
     this.loading = true;
-    await Promise.all([
-      this.fetchImageGroups(),
-      this.fetchImages(false),
-      this.fetchTags()
-    ]);
-    this.selectedImageGroups = this.availableImageGroups.slice();
+    await this.fetchImages(false);
     this.loading = false;
   },
   mounted() {
@@ -272,6 +200,11 @@ export default {
   background: $dark-scrollbar-thumb-hover !important;
 }
 
+.image-selector-container {
+  display: flex;
+  height: 100%;
+}
+
 .image-selector-wrapper {
   background-color: $dark-wapper-bg;
   box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
@@ -283,6 +216,31 @@ export default {
   overflow-y: auto;
   overflow-x: hidden;
   border-right: 1px solid $dark-border-color;
+  transition: width 0.3s ease, min-width 0.3s ease, padding 0.3s ease;
+}
+
+.image-selector-wrapper.collapsed {
+  width: 0;
+  min-width: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+.image-selector-opener {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  background-color: $dark-bg-secondary;
+  border-right: 1px solid $dark-border-color;
+  cursor: pointer;
+  color: $dark-text-secondary;
+  z-index: 151;
+}
+
+.image-selector-opener:hover {
+  background-color: $dark-bg-tertiary;
+  color: $dark-text-primary;
 }
 
 .card {

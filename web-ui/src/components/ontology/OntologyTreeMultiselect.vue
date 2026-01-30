@@ -52,7 +52,7 @@
       </li>
     </ul>
     <ontology-tree
-      :ontology="ontology"
+      :ontologies="ontologies"
       :additionalNodes="additionalNodes"
       :startWithAdditionalNodes="startWithAdditionalNodes"
       :selectedNodes="selectedNodes"
@@ -92,6 +92,7 @@ export default {
   },
   props: {
     ontology: {type: Object},
+    ontologies: {type: Array, default: null}, // 新增ontologies属性
     additionalNodes: {type: Array, default: () => []},
     startWithAdditionalNodes: {type: Boolean, default: false},
     selectedNodes: {type: Array, default: () => []},
@@ -101,16 +102,18 @@ export default {
     return {
       activeSelector: false,
       searchString: '',
-      maxNbDisplayed: 3
+      maxNbDisplayed: 10
     };
   },
   computed: {
     allTerms() {
-      if (!this.ontology) {
-        return [];
-      }
       let terms = this.additionalNodes.map(node => node);
-      terms.push(...getAllTerms(this.ontology));
+      if (this.ontologies) {
+        this.ontologies.forEach(ontology => {
+          terms.push(...getAllTerms(ontology));
+        });
+      }
+      console.log('allTerms',terms);
       return terms;
     },
     allSelected() {

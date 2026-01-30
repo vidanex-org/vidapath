@@ -131,7 +131,6 @@ export default {
   },
   methods: {
     makeTree() {
-      console.log('ontologies',this.ontologies);
       // 构建基本节点树
       let nodes = (this.ontology) ? this.createSubTree(Array.isArray(this.ontology.children.array)?this.ontology.children.array.slice():this.ontology.children) : [];
       
