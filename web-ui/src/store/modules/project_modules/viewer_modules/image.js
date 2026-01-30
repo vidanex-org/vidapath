@@ -209,23 +209,9 @@ export default {
         dispatch('fetchSliceInstancesAround', { rank: clone[0].rank }),
       ]);
       commit('setOntologies', image.ontologies);
-      console.log('image.ontologies', image.ontologies);
       commit('updateOntologyTerms'); // 使用mutation更新ontologyTerms
 
-      // 更新style模块中的ontologyTerms
-      const imageOntologyTerms = state.ontologyTerms;
-      const formattedOntologyTerms = {};
-      for (let ontologyId in imageOntologyTerms) {
-        const terms = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
-        if (terms) {
-          terms.forEach(term => {
-            formattedOntologyTerms[term.id] = term;
-          });
-        }
-      }
-
-      console.log('formattedOntologyTerms', formattedOntologyTerms);
-      commit('setStyleOntologyTerms', formattedOntologyTerms);
+      updateStyleOntologyTerms(state, commit);
     },
     async setImageInstance({ dispatch, rootState }, { image, slices }) {
       await dispatch('initialize', { image, slices });
@@ -316,20 +302,7 @@ export default {
 
       commit('updateOntologyTerms');
 
-      // 更新style模块中的ontologyTerms
-      const imageOntologyTerms = state.ontologyTerms;
-      const formattedOntologyTerms = {};
-      for (let ontologyId in imageOntologyTerms) {
-        const terms = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
-        if (terms) {
-          terms.forEach(term => {
-            formattedOntologyTerms[term.id] = term;
-          });
-        }
-      }
-
-      console.log('formattedOntologyTerms', formattedOntologyTerms);
-      commit('setStyleOntologyTerms', formattedOntologyTerms);
+      updateStyleOntologyTerms(state, commit);
     },
 
     async fetchProfile({ state, commit }) {
@@ -403,20 +376,7 @@ export default {
         commit('setOntologies', image.ontologies);
         commit('updateOntologyTerms'); // 使用mutation更新ontologyTerms
 
-        // 更新style模块中的ontologyTerms
-        const imageOntologyTerms = state.ontologyTerms;
-        const formattedOntologyTerms = {};
-        for (let ontologyId in imageOntologyTerms) {
-          const terms = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
-          if (terms) {
-            terms.forEach(term => {
-              formattedOntologyTerms[term.id] = term;
-            });
-          }
-        }
-
-        console.log('formattedOntologyTerms', formattedOntologyTerms);
-        commit('setStyleOntologyTerms', formattedOntologyTerms);
+        updateStyleOntologyTerms(state, commit);
 
         return result;
       } catch (error) {
@@ -437,20 +397,7 @@ export default {
         commit('removeOntology', ontologyId);
         commit('updateOntologyTerms'); // 使用mutation更新ontologyTerms
 
-        // 更新style模块中的ontologyTerms
-        const imageOntologyTerms = state.ontologyTerms;
-        const formattedOntologyTerms = {};
-        for (let ontologyId in imageOntologyTerms) {
-          const terms = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
-          if (terms) {
-            terms.forEach(term => {
-              formattedOntologyTerms[term.id] = term;
-            });
-          }
-        }
-
-        console.log('formattedOntologyTerms', formattedOntologyTerms);
-        commit('setStyleOntologyTerms', formattedOntologyTerms);
+        updateStyleOntologyTerms(state, commit);
 
         return result;
       } catch (error) {
@@ -651,7 +598,6 @@ export default {
           allTerms = allTerms.concat(termsWithOntologyId);
         }
       }
-      console.log('allTerms:', allTerms);
       return allTerms;
     },
 
@@ -674,6 +620,20 @@ export default {
     controls
   }
 };
+
+function updateStyleOntologyTerms(state, commit) {
+  const imageOntologyTerms = state.ontologyTerms;
+  const formattedOntologyTerms = {};
+  for (let ontologyId in imageOntologyTerms) {
+    const terms = formatTerms(imageOntologyTerms[ontologyId], 0.5); // 使用默认的layersOpacity
+    if (terms) {
+      terms.forEach(term => {
+        formattedOntologyTerms[term.id] = term;
+      });
+    }
+  }
+  commit('setStyleOntologyTerms', formattedOntologyTerms);
+}
 
 function findRankPage(rank) {
   return Math.ceil((rank + 1) / constants.PRELOADED_SLICES) - 1;

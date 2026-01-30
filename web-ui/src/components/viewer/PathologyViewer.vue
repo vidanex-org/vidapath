@@ -76,7 +76,7 @@
         </div>
 
         <ontology-tree
-          v-if="showTermSelectorFor === result.id"
+          v-if="showTermSelectorFor === result.id && treeReady"
           class="ontology-tree-container"
           v-model="result.supplementaryTerms"
           :ontologies="imageOntologies"
@@ -112,7 +112,7 @@
             </div>
           </div>
 
-          <div class="ontology-tree-wrapper">
+          <div class="ontology-tree-wrapper" v-if="treeReady">
             <div class="header-tree">
               <div class="sidebar-tree">
                 <div class="visibility"><i class="far fa-eye"></i></div>
@@ -132,6 +132,9 @@
                 </div>
               </template>
             </ontology-tree>
+          </div>
+          <div v-else class="ontology-tree-loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading terms...
           </div>
           <div class="has-text-right mt-2">
             <button class="button is-small is-link" @click="openSelectOntologyModal">Add terms</button>
@@ -163,6 +166,7 @@ export default {
       loadingRunners: true,
       runAlgorithmPanelVisible: true,
       manualTermsPanelVisible: true,
+      treeReady: false, // 控制树组件的延迟渲染
       showTermSelectorFor: null,
 
       // Sample data structure for AI results
@@ -213,6 +217,13 @@ export default {
     allTerms() {
       return this.$store.getters[this.imageModule + 'terms'] || [];
     },
+    termsMap() {
+      const map = {};
+      this.allTerms.forEach(term => {
+        map[term.id] = term;
+      });
+      return map;
+    },
     imageId() {
       return this.imageWrapper?.imageInstance?.id;
     }
@@ -222,7 +233,6 @@ export default {
       this.loadingRunners = true;
       try {
         this.aiRunners = await AIRunner.fetchAll();
-        console.log("Fetched AI runners:", this.aiRunners);
       } catch (error) {
         console.error('Failed to fetch AI runners:', error);
         this.$buefy.toast.open({
@@ -264,8 +274,6 @@ export default {
               message: 'AI processing started successfully',
               type: 'is-success'
             });
-
-            console.log('Started AI processing with runner:', this.selectedAIRunner);
 
             // TODO: Poll for job status and add results to aiResults array
 
@@ -321,11 +329,11 @@ export default {
       this.showTermSelectorFor = this.showTermSelectorFor === resultId ? null : resultId;
     },
     getTermName(termId) {
-      const term = this.allTerms.find(t => t.id === termId);
+      const term = this.termsMap[termId];
       return term ? term.name : 'Unknown Term';
     },
     getTermColor(termId) {
-      const term = this.allTerms.find(t => t.id === termId);
+      const term = this.termsMap[termId];
       return term ? term.color : '#000000';
     },
     isResultTermVisible(termId) {
@@ -344,6 +352,10 @@ export default {
 
   async mounted() {
     await this.fetchAIRunners();
+    // 延迟渲染树组件，优先保证面板框架和动画的流畅性
+    requestAnimationFrame(() => {
+      this.treeReady = true;
+    });
   }
 };
 </script>
@@ -509,6 +521,13 @@ input:checked+.switch-slider:before {
   max-height: 17em;
   overflow: auto;
   margin-bottom: 0.4em !important;
+}
+
+.ontology-tree-loading {
+  padding: 2em;
+  text-align: center;
+  color: $dark-text-secondary;
+  font-style: italic;
 }
 
 .header-tree {

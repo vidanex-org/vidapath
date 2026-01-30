@@ -20,6 +20,102 @@
       </a>
     </div>
     <template v-if="!loading && zoom !== null">
+      <div class="map-tools">
+        <ul class="map-tools-list">
+          <li><a title="Zoom in" @click="zoomIn()"><i class="fas fa-search-plus fa-fw"></i></a></li>
+          <li><a title="Zoom out" @click="zoomOut()"><i class="fas fa-search-minus fa-fw"></i></a></li>
+          <li v-if="isPanelDisplayed('digital-zoom')">
+            <a @click="togglePanel('digital-zoom')" :class="{ active: activePanel === 'digital-zoom' }">
+              <i class="fas fa-search fa-fw"></i>
+            </a>
+            <digital-zoom class="panel-options" v-show="activePanel === 'digital-zoom'" :index="index"
+              @resetZoom="$refs.view.animate({ zoom: image.zoom })" @fitZoom="fitZoom" />
+          </li>
+          <li>
+            <a title="Rotate" @click="togglePanel('rotation')" :class="{ active: activePanel === 'rotation' }">
+              <i class="fa fa-undo fa-fw" aria-hidden="true"></i>
+            </a>
+            <rotation-selector class="panel-options" v-show="activePanel === 'rotation'" :index="index" />
+          </li>
+          <hr class="is-divider">
+          <!-- AI Analysis Panel Button -->
+          <li>
+            <a title="AI Analysis" @click="toggleAIAnalysisPanel" :class="{ active: showAIAnalysisPanel }">
+              <i class="fas fa-robot fa-fw"></i>
+            </a>
+          </li>
+          <li>
+            <a title="Pathology Report" @click="toggleReportDrawer" :class="{ active: showReportDrawer }">
+              <i class="fas fa-file-medical fa-fw"></i>
+            </a>
+          </li>
+          <hr class="is-divider" />
+          <li>
+            <a @click="togglePanel('layers')" :class="{ active: activePanel === 'layers' }">
+              <i class="fas fa-copy fa-fw"></i>
+            </a>
+            <layers-panel class="panel-options" v-show="activePanel === 'layers'" :index="index" />
+          </li>
+          <li v-if="isPanelDisplayed('color-manipulation')">
+            <a @click="togglePanel('colors')" :class="{ active: activePanel === 'colors' }">
+              <i class="fas fa-adjust fa-fw"></i>
+            </a>
+            <color-manipulation class="panel-options" v-show="activePanel === 'colors'" :index="index" />
+          </li>
+          <hr class="is-divider" />
+          <li v-if="isPanelDisplayed('info')">
+            <a @click="togglePanel('info')" :class="{ active: ['info', 'metadata'].includes(activePanel) }">
+              <i class="fas fa-info fa-fw"></i>
+            </a>
+            <information-panel class="panel-options" v-show="activePanel === 'info'" :index="index" />
+          </li>
+          <li v-if="configUI['project-tools-screenshot']">
+            <a @click="takeScreenshot()" :class="{ active: activePanel === 'screenshot' }">
+              <i class="fas fa-camera fa-fw"></i>
+            </a>
+          </li>
+          <li>
+            <a @click="toggleFullscreen">
+              <i :class="isFullscreen ? 'fas fa-compress fa-fw' : 'fas fa-expand fa-fw'"></i>
+            </a>
+          </li>
+          <li v-if="!$keycloak.hasTemporaryToken">
+            <a @click="ShareByLink()">
+              <i class="fa fa-share-alt fa-fw" aria-hidden="true"></i>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <vl-map :data-projection="projectionName" :load-tiles-while-animating="true" :load-tiles-while-interacting="true"
+        :keyboard-event-target="document" @pointermove="projectedMousePosition = $event.coordinate"
+        @mounted="updateKeyboardInteractions" ref="map">
+        <vl-view :center.sync="center" :zoom.sync="zoom" :rotation.sync="rotation" :max-zoom="maxZoom"
+          :max-resolution="Math.pow(2, image.zoom)" :extent="extent" :projection="projectionName"
+          @mounted="viewMounted()" ref="view" />
+        <vl-layer-tile :extent="extent" @mounted="addOverviewMap" ref="baseLayer">
+          <vl-source-cytomine :projection="projectionName" :url="baseLayerURL" :tile-load-function="tileLoadFunction"
+            :size="imageSize" :extent="extent" :nb-resolutions="image.zoom" ref="baseSource" @mounted="setBaseSource()"
+            :transition="0" :tile-size="[tileSize, tileSize]" />
+        </vl-layer-tile>
+        <annotation-layer v-for="layer in selectedLayers" :key="'layer-' + layer.id" :index="index" :layer="layer" />
+        <select-interaction v-if="activeSelectInteraction" :index="index" />
+        <draw-interaction v-if="activeDrawInteraction" :index="index" />
+        <modify-interaction v-if="activeModifyInteraction" :index="index" />
+      </vl-map>
+      <div v-if="configUI['project-tools-main']" class="draw-tools">
+        <draw-tools :index="index" @screenshot="takeScreenshot()" />
+      </div>
+      <scale-line v-show="scaleLineCollapsed" :image="image" :zoom="zoom" :mousePosition="projectedMousePosition" />
+      <magnification-selector v-if="image.magnification" :image="image" :zoom="zoom"
+        @setMagnification="setMagnification" @fit="fitZoom" />
+      <toggle-scale-line :index="index" />
+      <annotations-container :index="index" @centerView="centerViewOnAnnot" />
+      <div class="custom-overview" ref="overview">
+        <p class="image-name" :class="{ hidden: overviewCollapsed }">
+          <image-name :image="image" />
+        </p>
+      </div>
+
       <!-- AI Analysis Panel -->
       <div v-if="showAIAnalysisPanel" class="ai-analysis-panel">
         <pathology-viewer :project="project" :index="index" />
@@ -33,229 +129,6 @@
 
       <!-- Pathology Report Drawer -->
       <pathology-report-drawer :active="showReportDrawer" @close="showReportDrawer = false" />
-
-      <div class="map-tools">
-
-        <ul class="map-tools-list">
-
-          <li><a title="Zoom in" @click="zoomIn()"><i class="fas fa-search-plus fa-fw"></i></a></li>
-
-          <li><a title="Zoom out" @click="zoomOut()"><i class="fas fa-search-minus fa-fw"></i></a></li>
-
-          <li><a title="Pan" @click="activatePan()"><i class="fas fa-arrows-alt fa-fw"></i></a></li>
-
-
-
-          <li v-if="isPanelDisplayed('digital-zoom')">
-
-            <a @click="togglePanel('digital-zoom')" :class="{ active: activePanel === 'digital-zoom' }">
-
-              <i class="fas fa-search fa-fw"></i>
-
-            </a>
-
-            <digital-zoom class="panel-options" v-show="activePanel === 'digital-zoom'" :index="index"
-              @resetZoom="$refs.view.animate({ zoom: image.zoom })" @fitZoom="fitZoom" />
-
-          </li>
-
-          <li>
-
-            <a title="Rotate" @click="togglePanel('rotation')" :class="{ active: activePanel === 'rotation' }">
-
-              <i class="fa fa-undo fa-fw" aria-hidden="true"></i>
-
-            </a>
-
-            <rotation-selector class="panel-options" v-show="activePanel === 'rotation'" :index="index" />
-
-          </li>
-
-          <hr class="is-divider">
-
-
-
-          <li>
-
-            <a @click="togglePanel('layers')" :class="{ active: activePanel === 'layers' }">
-
-              <i class="fas fa-copy fa-fw"></i>
-
-            </a>
-
-            <layers-panel class="panel-options" v-show="activePanel === 'layers'" :index="index" />
-
-          </li>
-
-
-
-          <li v-if="isPanelDisplayed('color-manipulation')">
-
-            <a @click="togglePanel('colors')" :class="{ active: activePanel === 'colors' }">
-
-              <i class="fas fa-adjust fa-fw"></i>
-
-            </a>
-
-            <color-manipulation class="panel-options" v-show="activePanel === 'colors'" :index="index" />
-
-          </li>
-
-
-
-          <!-- <li v-if="isPanelDisplayed('ontology')">
-
-                  <a @click="togglePanel('ontology')" :class="{ active: activePanel === 'ontology' }">
-
-                    <i class="fa fa-tags fa-fw" aria-hidden="true"></i>
-
-                  </a>
-
-                  <ontology-panel class="panel-options" v-show="activePanel === 'ontology'" :index="index" />
-
-                </li> -->
-
-
-
-          <!-- <li v-if="isPanelDisplayed('ontology')">
-
-            <a @click="togglePanel('ontology-terms')" :class="{ active: activePanel === 'ontology-terms' }">
-
-              <i class="fa fa-hashtag fa-fw" aria-hidden="true"></i>
-
-            </a>
-
-            <ontology-terms-panel class="panel-options" v-show="activePanel === 'ontology-terms'" :index="index" />
-
-          </li> -->
-
-          <!-- AI Analysis Panel Button -->
-
-          <li>
-
-            <a title="AI Analysis" @click="toggleAIAnalysisPanel" :class="{ active: showAIAnalysisPanel }">
-
-              <i class="fas fa-robot fa-fw"></i>
-
-            </a>
-
-          </li>
-
-
-
-          <li>
-
-            <a title="Pathology Report" @click="toggleReportDrawer" :class="{ active: showReportDrawer }">
-
-              <i class="fas fa-file-medical fa-fw"></i>
-
-            </a>
-
-          </li>
-
-
-
-          <!-- <li v-if="isPanelDisplayed('property')">
-
-                  <a @click="togglePanel('properties')" :class="{ active: activePanel === 'properties' }">
-
-                    <i class="fas fa-tag fa-fw"></i>
-
-                  </a>
-
-                  <properties-panel class="panel-options" v-show="activePanel === 'properties'" :index="index" />
-
-                </li> -->
-
-
-
-          <hr class="is-divider">
-
-          <li v-if="isPanelDisplayed('info')">
-
-            <a @click="togglePanel('info')" :class="{ active: ['info', 'metadata'].includes(activePanel) }">
-
-              <i class="fas fa-info fa-fw"></i>
-
-            </a>
-
-            <information-panel class="panel-options" v-show="activePanel === 'info'" :index="index" />
-
-          </li>
-
-
-
-          <li v-if="configUI['project-tools-screenshot']">
-
-            <a @click="takeScreenshot()" :class="{ active: activePanel === 'screenshot' }">
-
-              <i class="fas fa-camera fa-fw"></i>
-
-            </a>
-
-          </li>
-
-
-
-          <li>
-
-            <a @click="toggleFullscreen">
-
-              <i :class="isFullscreen ? 'fas fa-compress fa-fw' : 'fas fa-expand fa-fw'"></i>
-
-            </a>
-
-          </li>
-
-          <li v-if="!$keycloak.hasTemporaryToken">
-
-            <a @click="ShareByLink()">
-
-              <i class="fa fa-share-alt fa-fw" aria-hidden="true"></i>
-
-            </a>
-
-          </li>
-
-        </ul>
-
-      </div>
-      <vl-map :data-projection="projectionName" :load-tiles-while-animating="true" :load-tiles-while-interacting="true"
-        :keyboard-event-target="document" @pointermove="projectedMousePosition = $event.coordinate"
-        @mounted="updateKeyboardInteractions" ref="map">
-        <vl-view :center.sync="center" :zoom.sync="zoom" :rotation.sync="rotation" :max-zoom="maxZoom"
-          :max-resolution="Math.pow(2, image.zoom)" :extent="extent" :projection="projectionName"
-          @mounted="viewMounted()" ref="view" />
-        <vl-layer-tile :extent="extent" @mounted="addOverviewMap" ref="baseLayer">
-          <vl-source-cytomine :projection="projectionName" :url="baseLayerURL" :tile-load-function="tileLoadFunction"
-            :size="imageSize" :extent="extent" :nb-resolutions="image.zoom" ref="baseSource" @mounted="setBaseSource()"
-            :transition="0" :tile-size="[tileSize, tileSize]" />
-        </vl-layer-tile>
-        <!--      <vl-layer-image>-->
-        <!--        <vl-source-raster-->
-        <!--          v-if="baseSource && colorManipulationOn"-->
-        <!--          :sources="[baseSource]"-->
-        <!--          :operation="operation"-->
-        <!--          :lib="lib"-->
-        <!--        />-->
-        <!--      </vl-layer-image>-->
-        <annotation-layer v-for="layer in selectedLayers" :key="'layer-' + layer.id" :index="index" :layer="layer" />
-        <select-interaction v-if="activeSelectInteraction" :index="index" />
-        <draw-interaction v-if="activeDrawInteraction" :index="index" />
-        <modify-interaction v-if="activeModifyInteraction" :index="index" />
-      </vl-map>
-      <div v-if="configUI['project-tools-main']" class="draw-tools">
-        <draw-tools :index="index" @screenshot="takeScreenshot()" />
-      </div>
-      <scale-line v-show="scaleLineCollapsed" :image="image" :zoom="zoom" :mousePosition="projectedMousePosition" />
-      <magnification-selector v-if="image.magnification" :image="image" :zoom="zoom" @setMagnification="setMagnification" @fit="fitZoom" />
-      <toggle-scale-line :index="index" />
-      <annotations-container :index="index" @centerView="centerViewOnAnnot" />
-      <div class="custom-overview" ref="overview">
-        <p class="image-name" :class="{ hidden: overviewCollapsed }">
-          <image-name :image="image" />
-        </p>
-      </div>
     </template>
   </div>
 </template>
@@ -264,32 +137,12 @@ import { get } from '@/utils/store-helpers';
 import _ from 'lodash';
 import ImageName from '@/components/image/ImageName';
 import AnnotationLayer from './AnnotationLayer';
-import RotationSelector from './RotationSelector';
 import ScaleLine from './ScaleLine';
 import MagnificationSelector from './MagnificationSelector';
-import DrawTools from './DrawTools';
-// import ImageControls from './ImageControls';
-import AnnotationsContainer from './AnnotationsContainer';
-// import AnnotationDetailsContainer from './AnnotationDetailsContainer';
-import InformationPanel from './panels/InformationPanel';
-// import MetadataPanel from './panels/MetadataPanel.vue';
-import DigitalZoom from './panels/DigitalZoom';
-import ColorManipulation from './panels/ColorManipulation';
-// import LinkPanel from './panels/LinkPanel';
-import LayersPanel from './panels/LayersPanel';
-// import OntologyPanel from './panels/OntologyPanel';
-// import OntologyTermsPanel from './panels/OntologyTermsPanel.vue';
-// import PropertiesPanel from './panels/PropertiesPanel';
-// import FollowPanel from './panels/FollowPanel';
-// import ReviewPanel from './panels/ReviewPanel';
 import SelectInteraction from './interactions/SelectInteraction';
 import DrawInteraction from './interactions/DrawInteraction';
 import ModifyInteraction from './interactions/ModifyInteraction';
 import ToggleScaleLine from './interactions/ToggleScaleLine';
-import PathologyViewer from './PathologyViewer.vue';
-import ShareProjectModal from '@/components/project/ShareProjectModal.vue';
-import PathologyReportDrawer from './PathologyReportDrawer.vue';
-import AddOntologyModal from './panels/AddOntologyModal.vue';
 import { addProj, createProj, getProj } from 'vuelayers/lib/ol-ext';
 import View from 'ol/View';
 import OverviewMap from 'ol/control/OverviewMap';
@@ -307,32 +160,24 @@ export default {
   components: {
     ImageName,
     AnnotationLayer,
-    RotationSelector,
     ScaleLine,
     MagnificationSelector,
-    DrawTools,
-    // ImageControls,
-    AnnotationsContainer,
-    // AnnotationDetailsContainer,
-    InformationPanel,
-    // MetadataPanel,
-    DigitalZoom,
-    ColorManipulation,
-    // LinkPanel,
-    LayersPanel,
-    // OntologyPanel,
-    // OntologyTermsPanel,
-    // PropertiesPanel,
-    // FollowPanel,
-    // ReviewPanel,
     SelectInteraction,
     DrawInteraction,
     ModifyInteraction,
     ToggleScaleLine,
-    PathologyViewer,
-    ShareProjectModal,
-    PathologyReportDrawer,
-    AddOntologyModal
+    // 异步加载非核心组件，加快首屏渲染速度
+    RotationSelector: () => import('./RotationSelector'),
+    DrawTools: () => import('./DrawTools'),
+    AnnotationsContainer: () => import('./AnnotationsContainer'),
+    InformationPanel: () => import('./panels/InformationPanel'),
+    DigitalZoom: () => import('./panels/DigitalZoom'),
+    ColorManipulation: () => import('./panels/ColorManipulation'),
+    LayersPanel: () => import('./panels/LayersPanel'),
+    PathologyViewer: () => import('./PathologyViewer.vue'),
+    ShareProjectModal: () => import('@/components/project/ShareProjectModal.vue'),
+    PathologyReportDrawer: () => import('./PathologyReportDrawer.vue'),
+    AddOntologyModal: () => import('./panels/AddOntologyModal.vue')
   },
   data() {
     return {
@@ -511,17 +356,6 @@ export default {
         xhr.send();
       };
     },
-    // layersToPreload() {
-    //   let layers = [];
-    //   let annot = this.selectedAnnotation || this.routedAnnotation;
-    //   if (annot) {
-    //     layers.push(annot.type === AnnotationType.REVIEWED ? -1 : (annot.username));
-    //   }
-    //   if (this.routedAction === 'review' && !layers.includes(-1)) {
-    //     layers.push(-1);
-    //   }
-    //   return layers;
-    // },
     overviewCollapsed() {
       return this.overview ? this.overview.getCollapsed() : this.imageWrapper.view.overviewCollapsed;
     },
@@ -929,24 +763,18 @@ export default {
         this.$notify({ type: 'error', text: this.$t('notif-error-target-annotation') });
       }
     }
-    try {
-      await new ImageConsultation({ image: this.image.id }).save();
-    } catch (error) {
+    // 不阻塞初始化流程，异步保存浏览记录
+    new ImageConsultation({ image: this.image.id }).save().catch(error => {
       console.log(error);
-      this.$notify({ type: 'error', text: this.$t('notif-error-save-image-consultation') });
-    }
-    // try {
-    //   await this.fetchLayers();
-    // } catch (error) {
-    //   console.log(error);
-    //   this.$notify({ type: 'error', text: this.$t('notif-error-loading-annotation-layers') });
-    //   return;
-    // }
-    // this.layers[0].visible = true;
-    // this.layers[0].drawOn = true;
-    // this.$store.dispatch(this.imageModule + 'addLayer', this.layers[0]);
-    // console.log('layers', this.layers);
-    // console.log('imageWrapper.layers',this.imageWrapper.layers);
+      // 这种非关键性错误可以不打扰用户，或者保留通知
+      // this.$notify({ type: 'error', text: this.$t('notif-error-save-image-consultation') });
+    });
+
+    // 异步加载图层，不阻塞界面渲染
+    this.fetchLayers().catch(error => {
+      console.log(error);
+      this.$notify({ type: 'error', text: this.$t('notif-error-loading-annotation-layers') });
+    });
     this.loading = false;
   },
   mounted() {
