@@ -839,6 +839,21 @@ $colorOpenedPanelLink: $primary;
   }
 }
 
+/* Mobile adaptation for AI Panel */
+@media (max-width: 768px) {
+  .ai-analysis-panel {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 70vh;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+  }
+}
+
 .map-container {
   display: flex;
   background-color: $dark-wapper-bg;
@@ -868,6 +883,21 @@ $colorOpenedPanelLink: $primary;
   left: 3.5rem;
   right: $widthPanelBar;
   z-index: 30;
+}
+
+@media (max-width: 768px) {
+  .draw-tools {
+    left: 10px;
+    right: 10px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar for cleaner look */
+    scrollbar-width: none; 
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
 }
 
 .broadcast {
@@ -912,6 +942,22 @@ $colorOpenedPanelLink: $primary;
     width: 100%;
     background: $dark-bg-primary;
     color: $dark-text-primary;
+  }
+}
+
+/* Mobile adaptation for Side Panels (Bottom Sheet style) */
+@media (max-width: 768px) {
+  .panel-options {
+    position: fixed; /* Break out of the relative parent */
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-height: 60vh;
+    overflow-y: auto;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000; /* Ensure it's on top */
   }
 }
 
@@ -1003,6 +1049,12 @@ $colorOpenedPanelLink: $primary;
     &.hidden {
       display: none;
     }
+  }
+}
+
+@media (max-width: 768px) {
+  .custom-overview {
+    display: none; /* Hide overview on mobile */
   }
 }
 

@@ -376,6 +376,14 @@ export default {
   color: $dark-text-primary;
 }
 
+@media (max-width: 768px) {
+  .panel {
+    width: 100%;
+    border-radius: 0; /* Reset radius for full width look inside container */
+    border: none;
+  }
+}
+
 .panel-title {
   padding: 12px 14px;
   font-weight: bold;
