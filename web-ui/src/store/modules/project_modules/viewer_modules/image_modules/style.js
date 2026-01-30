@@ -58,8 +58,8 @@ export default {
       term.visible = !term.visible;
     },
 
-    toggleOntologyTermVisibility(state, { ontoId, indexTerm }) {
-      let term = state.ontologyTerms[ontoId][indexTerm];;
+    toggleOntologyTermVisibility(state, { termId}) {
+      let term = state.ontologyTerms[termId];;
       term.visible = !term.visible;
       console.log(term);
     },
@@ -75,8 +75,8 @@ export default {
       changeOpacity(term.olLineStyle, state.layersOpacity * opacity);
     },
 
-    setOntologyTermOpacity(state, { ontoId, indexTerm, opacity }) {
-      let term = state.ontologyTerms[ontoId][indexTerm];
+    setOntologyTermOpacity(state, { termId, opacity }) {
+      let term = state.ontologyTerms[termId];
       term.opacity = opacity;
       changeOpacity(term.olStyle, state.layersOpacity * opacity);
       changeOpacity(term.olLineStyle, state.layersOpacity * opacity);
@@ -184,19 +184,6 @@ export default {
         list.push(0);
       }
       return list || [];
-    },
-    
-    // 根据term.id从ontologyTerms中查找对应term的getter
-    getTermByIdFromOntologyTerms: (state) => (termId) => {
-      for (let ontoId in state.ontologyTerms) {
-        if (state.ontologyTerms[ontoId]) {
-          const foundTerm = state.ontologyTerms[ontoId].find(term => term.id === termId);
-          if (foundTerm) {
-            return foundTerm;
-          }
-        }
-      }
-      return null;
     }
   }
 };

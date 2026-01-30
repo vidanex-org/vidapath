@@ -111,14 +111,11 @@ export default {
     styleFunctionFactory() {
       this.imageWrapper.selectedFeatures.selectedFeatures;
       this.imageWrapper.style.layersOpacity;
-      for (let ontoId in this.ontologyTerms) {
-        if (this.ontologyTerms[ontoId]) {
-          this.ontologyTerms[ontoId].forEach(term => {
-            term.visible;
-            term.color;
-            term.opacity;
-          });
-        }
+      for (let termId in this.ontologyTerms) {
+        let term = this.ontologyTerms[termId];
+        term.visible;
+        term.color;
+        term.opacity;
       }
       this.imageWrapper.style.displayNoTerm;
       this.imageWrapper.style.noTermOpacity;

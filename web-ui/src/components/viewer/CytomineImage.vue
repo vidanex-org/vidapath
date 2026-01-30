@@ -28,6 +28,9 @@
       <!-- Share Project Modal -->
       <share-project-modal :active="shareModalActive" :project="project" @update:active="shareModalActive = $event" />
 
+      <!-- Add Ontology Modal -->
+      <add-ontology-modal :active="showAddOntologyModal" :index="index" @close="showAddOntologyModal = false" />
+
       <!-- Pathology Report Drawer -->
       <pathology-report-drawer :active="showReportDrawer" @close="showReportDrawer = false" />
 
@@ -286,6 +289,7 @@ import ToggleScaleLine from './interactions/ToggleScaleLine';
 import PathologyViewer from './PathologyViewer.vue';
 import ShareProjectModal from '@/components/project/ShareProjectModal.vue';
 import PathologyReportDrawer from './PathologyReportDrawer.vue';
+import AddOntologyModal from './panels/AddOntologyModal.vue';
 import { addProj, createProj, getProj } from 'vuelayers/lib/ol-ext';
 import View from 'ol/View';
 import OverviewMap from 'ol/control/OverviewMap';
@@ -327,7 +331,8 @@ export default {
     ToggleScaleLine,
     PathologyViewer,
     ShareProjectModal,
-    PathologyReportDrawer
+    PathologyReportDrawer,
+    AddOntologyModal
   },
   data() {
     return {
@@ -345,6 +350,7 @@ export default {
       showAIAnalysisPanel: false,
       // Pathology Report Drawer
       showReportDrawer: false,
+      showAddOntologyModal: false,
       // Share Modal
       shareModalActive: false,
       layers: [], // Array<User> (representing user layers)
@@ -948,6 +954,7 @@ export default {
     this.$eventBus.$on('shortkeyEvent', this.shortkeyHandler);
     this.$eventBus.$on('selectAnnotation', this.selectAnnotationHandler);
     this.$eventBus.$on('close-metadata', () => this.$store.commit(this.imageModule + 'togglePanel', 'info'));
+    this.$eventBus.$on('openAddOntologyModal', () => this.showAddOntologyModal = true);
     this.setInitialZoom();
     // 添加全屏事件监听器
     document.addEventListener('fullscreenchange', this.handleFullscreenChange);
@@ -960,6 +967,7 @@ export default {
     this.$eventBus.$off('shortkeyEvent', this.shortkeyHandler);
     this.$eventBus.$off('selectAnnotation', this.selectAnnotationHandler);
     this.$eventBus.$off('close-metadata');
+    this.$eventBus.$off('openAddOntologyModal');
     clearTimeout(this.timeoutSavePosition);
     // 移除全屏事件监听器
     document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
@@ -1057,9 +1065,8 @@ $colorOpenedPanelLink: $primary;
   left: $widthPanelBar;
   width: 24em;
   // min-height: 5em;
-  background: $dark-bg-primary;
+  background: rgba($dark-bg-primary, 0.9);
   color: $dark-text-primary;
-  opacity: 0.9;
   padding: 0.75em;
   border-radius: 5px;
   z-index: 100;
