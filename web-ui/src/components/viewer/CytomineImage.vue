@@ -117,7 +117,7 @@
 
 
 
-          <li v-if="isPanelDisplayed('ontology')">
+          <!-- <li v-if="isPanelDisplayed('ontology')">
 
             <a @click="togglePanel('ontology-terms')" :class="{ active: activePanel === 'ontology-terms' }">
 
@@ -127,7 +127,7 @@
 
             <ontology-terms-panel class="panel-options" v-show="activePanel === 'ontology-terms'" :index="index" />
 
-          </li>
+          </li> -->
 
           <!-- AI Analysis Panel Button -->
 
@@ -268,20 +268,20 @@ import RotationSelector from './RotationSelector';
 import ScaleLine from './ScaleLine';
 import MagnificationSelector from './MagnificationSelector';
 import DrawTools from './DrawTools';
-import ImageControls from './ImageControls';
+// import ImageControls from './ImageControls';
 import AnnotationsContainer from './AnnotationsContainer';
-import AnnotationDetailsContainer from './AnnotationDetailsContainer';
+// import AnnotationDetailsContainer from './AnnotationDetailsContainer';
 import InformationPanel from './panels/InformationPanel';
-import MetadataPanel from './panels/MetadataPanel.vue';
+// import MetadataPanel from './panels/MetadataPanel.vue';
 import DigitalZoom from './panels/DigitalZoom';
 import ColorManipulation from './panels/ColorManipulation';
-import LinkPanel from './panels/LinkPanel';
+// import LinkPanel from './panels/LinkPanel';
 import LayersPanel from './panels/LayersPanel';
-import OntologyPanel from './panels/OntologyPanel';
-import OntologyTermsPanel from './panels/OntologyTermsPanel.vue';
-import PropertiesPanel from './panels/PropertiesPanel';
-import FollowPanel from './panels/FollowPanel';
-import ReviewPanel from './panels/ReviewPanel';
+// import OntologyPanel from './panels/OntologyPanel';
+// import OntologyTermsPanel from './panels/OntologyTermsPanel.vue';
+// import PropertiesPanel from './panels/PropertiesPanel';
+// import FollowPanel from './panels/FollowPanel';
+// import ReviewPanel from './panels/ReviewPanel';
 import SelectInteraction from './interactions/SelectInteraction';
 import DrawInteraction from './interactions/DrawInteraction';
 import ModifyInteraction from './interactions/ModifyInteraction';
@@ -311,20 +311,20 @@ export default {
     ScaleLine,
     MagnificationSelector,
     DrawTools,
-    ImageControls,
+    // ImageControls,
     AnnotationsContainer,
-    AnnotationDetailsContainer,
+    // AnnotationDetailsContainer,
     InformationPanel,
-    MetadataPanel,
+    // MetadataPanel,
     DigitalZoom,
     ColorManipulation,
-    LinkPanel,
+    // LinkPanel,
     LayersPanel,
-    OntologyPanel,
-    OntologyTermsPanel,
-    PropertiesPanel,
-    FollowPanel,
-    ReviewPanel,
+    // OntologyPanel,
+    // OntologyTermsPanel,
+    // PropertiesPanel,
+    // FollowPanel,
+    // ReviewPanel,
     SelectInteraction,
     DrawInteraction,
     ModifyInteraction,

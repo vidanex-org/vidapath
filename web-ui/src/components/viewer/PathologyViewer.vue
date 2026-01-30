@@ -28,7 +28,7 @@
         <div class="panel-title-left">
           <label class="switch" @click.stop>
             <input type="checkbox" v-model="result.includeInReport">
-            <span class="slider"></span>
+            <span class="switch-slider"></span>
           </label>
           <span class="panel-name">{{ result.runnerName }}</span>
         </div>
@@ -41,7 +41,7 @@
           <div class="left">
             <label class="switch is-small">
               <input type="checkbox" v-model="item.showOnImage">
-              <span class="slider"></span>
+              <span class="switch-slider"></span>
             </label>
             <span class="dot" :style="{ background: item.color }"></span>
             <span>{{ item.label }}</span>
@@ -57,8 +57,8 @@
           <div class="item" v-for="termId in result.supplementaryTerms" :key="termId">
             <div class="left">
               <label class="switch is-small">
-                <input type="checkbox" :checked="isTermVisible(result, termId)" @change="toggleTermVisibility(result, termId)">
-                <span class="slider"></span>
+                <input type="checkbox" :checked="isResultTermVisible(termId)" @change="toggleResultTermVisibility(termId)">
+                <span class="switch-slider"></span>
               </label>
               <span class="dot" :style="{ background: getTermColor(termId) }"></span>
               <span>{{ getTermName(termId) }}</span>
@@ -67,7 +67,7 @@
               <button class="delete is-small" @click="removeSupplementaryTerm(result, termId)"></button>
             </div>
           </div>
-          <div v-if="!result.supplementaryTerms.length" class="no-terms-notice">No supplementary terms added.</div>
+          <div v-if="!result.supplementaryTerms || !result.supplementaryTerms.length" class="no-terms-notice">No supplementary terms added.</div>
         </div>
         <div class="supplementary-terms-controls">
           <button class="button is-small" @click.stop="toggleTermSelector(result.id)">
@@ -79,12 +79,63 @@
           v-if="showTermSelectorFor === result.id"
           class="ontology-tree-container"
           v-model="result.supplementaryTerms"
-          :ontologies="ontologies"
+          :ontologies="imageOntologies"
           :multiple="true"
         />
 
         <div class="grade">Overall grade for this result:
           <strong style="color: orange;">{{ result.grade }}</strong>
+        </div>
+      </div>
+    </div>
+
+        <!-- Manual Terms Panel -->
+    <div class="panel">
+      <div class="panel-title" @click="manualTermsPanelVisible = !manualTermsPanelVisible">
+        <span>Manual Terms</span>
+        <span class="arrow" :class="{ open: manualTermsPanelVisible }">▶</span>
+      </div>
+      <div v-if="manualTermsPanelVisible" class="panel-body">
+        <div v-if="!hasOntologies" class="no-ontology-message">
+          <p class="has-text-centered"><em>No terms</em></p>
+          <p class="has-text-centered mt-2">
+            <button class="button is-small is-link" @click="openSelectOntologyModal">Add terms</button>
+          </p>
+        </div>
+        <div v-else>
+          <div class="ontology-tags field is-grouped is-grouped-multiline mb-3">
+            <div class="control" v-for="ontology in imageOntologies" :key="ontology.id">
+              <div class="tags has-addons">
+                <span class="tag is-info">{{ ontology.name }}</span>
+                <a class="tag is-delete" @click="removeOntologyFromImage(ontology.id)" title="Remove ontology"></a>
+              </div>
+            </div>
+          </div>
+
+          <div class="ontology-tree-wrapper">
+            <div class="header-tree">
+              <div class="sidebar-tree">
+                <div class="visibility"><i class="far fa-eye"></i></div>
+                <div class="opacity">Opacity</div>
+              </div>
+            </div>
+            <ontology-tree :ontologies="imageOntologies" :allowSelection="false">
+              <template #custom-sidebar="{ term }">
+                <div class="sidebar-tree">
+                  <div class="visibility">
+                    <b-checkbox v-if="term.id" size="is-small" :value="getTermVisibility(term)" @input="toggleTermVisibility(term)"/>
+                  </div>
+                  <div class="opacity">
+                    <input v-if="term.id" class="slider is-fullwidth is-small" step="0.05" min="0" max="1" type="range"
+                      :value="getTermOpacity(term)" @change="event => changeOpacity(term, event)" @input="event => changeOpacity(term, event)">
+                  </div>
+                </div>
+              </template>
+            </ontology-tree>
+          </div>
+          <div class="has-text-right mt-2">
+            <button class="button is-small is-link" @click="openSelectOntologyModal">Add terms</button>
+          </div>
         </div>
       </div>
     </div>
@@ -111,7 +162,8 @@ export default {
       selectedAIRunner: null,
       loadingRunners: true,
       runAlgorithmPanelVisible: true,
-      showTermSelectorFor: null, // Tracks which panel's term selector is open
+      manualTermsPanelVisible: true,
+      showTermSelectorFor: null,
 
       // Sample data structure for AI results
       aiResults: [
@@ -124,7 +176,6 @@ export default {
             { label: "Mitosis", count: 200, percent: null, color: "#E53935", showOnImage: true },
           ],
           supplementaryTerms: [],
-          termVisibility: {},
           grade: 'Grade 3'
         },
         {
@@ -137,7 +188,6 @@ export default {
             { label: "DCIS", count: "<0.5", percent: 0.5, color: "#00ACC1", showOnImage: false },
           ],
           supplementaryTerms: [],
-          termVisibility: {},
           grade: 'Grade 2'
         }
       ],
@@ -148,15 +198,23 @@ export default {
     imageModule() {
       return this.$store.getters['currentProject/imageModule'](this.index);
     },
-    ontologies() {
-      return this.$store.getters[this.imageModule + 'ontologies'];
+    imageWrapper() {
+      return this.$store.getters['currentProject/currentViewer'].images[this.index];
+    },
+    imageOntologies() {
+      return this.imageWrapper.ontologies || [];
+    },
+    hasOntologies() {
+      return this.imageOntologies.length > 0;
+    },
+    ontologyTerms() {
+      return this.imageWrapper.style.ontologyTerms;
     },
     allTerms() {
       return this.$store.getters[this.imageModule + 'terms'] || [];
     },
     imageId() {
-      const imageWrapper = this.$store.getters['currentProject/currentViewer'].images[this.index];
-      return imageWrapper?.imageInstance?.id;
+      return this.imageWrapper?.imageInstance?.id;
     }
   },
   methods: {
@@ -223,34 +281,62 @@ export default {
       });
     },
 
-    toggleTermSelector(resultId) {
-      if (this.showTermSelectorFor === resultId) {
-        this.showTermSelectorFor = null; // Close if already open
-      } else {
-        this.showTermSelectorFor = resultId; // Open for this result
+    openSelectOntologyModal() {
+      this.$eventBus.$emit('openAddOntologyModal');
+    },
+
+    async removeOntologyFromImage(ontologyId) {
+      if (!confirm('Are you sure you want to remove this ontology from the image?')) return;
+      try {
+        await this.$store.dispatch(this.imageModule + 'removeOntologyFromImage', ontologyId);
+        this.$buefy.toast.open({ message: 'Ontology removed', type: 'is-success' });
+      } catch (error) {
+        console.log(error);
+        this.$buefy.toast.open({ message: 'Error removing ontology', type: 'is-danger' });
       }
     },
 
+    getTermVisibility(term) {
+      if (this.ontologyTerms && this.ontologyTerms[term.id]) {
+        return this.ontologyTerms[term.id].visible;
+      }
+      return true;
+    },
+    getTermOpacity(term) {
+      if (this.ontologyTerms && this.ontologyTerms[term.id]) {
+        return this.ontologyTerms[term.id].opacity;
+      }
+      return 0.5;
+    },
+    toggleTermVisibility(term) {
+      this.$store.commit(this.imageModule + 'toggleOntologyTermVisibility', { termId: term.id });
+    },
+    changeOpacity(term, event) {
+      let opacity = Number(event.target.value);
+      this.$store.commit(this.imageModule + 'setOntologyTermOpacity', { termId: term.id, opacity });
+    },
+
+    // Supplementary Terms Methods
+    toggleTermSelector(resultId) {
+      this.showTermSelectorFor = this.showTermSelectorFor === resultId ? null : resultId;
+    },
     getTermName(termId) {
       const term = this.allTerms.find(t => t.id === termId);
       return term ? term.name : 'Unknown Term';
     },
-
     getTermColor(termId) {
       const term = this.allTerms.find(t => t.id === termId);
       return term ? term.color : '#000000';
     },
-
-    isTermVisible(result, termId) {
-      if (!result.termVisibility) this.$set(result, 'termVisibility', {});
-      return result.termVisibility[termId] !== false;
+    isResultTermVisible(termId) {
+      if (this.ontologyTerms && this.ontologyTerms[termId]) {
+        return this.ontologyTerms[termId].visible;
+      }
+      return true;
     },
-
-    toggleTermVisibility(result, termId) {
-      if (!result.termVisibility) this.$set(result, 'termVisibility', {});
-      this.$set(result.termVisibility, termId, !this.isTermVisible(result, termId));
+    toggleResultTermVisibility(termId) {
+      this.$store.commit(this.imageModule + 'toggleOntologyTermVisibility', { termId });
     },
-
     removeSupplementaryTerm(result, termId) {
       result.supplementaryTerms = result.supplementaryTerms.filter(id => id !== termId);
     }
@@ -329,7 +415,7 @@ export default {
   display: none;
 }
 
-.slider {
+.switch-slider {
   position: absolute;
   top: 0;
   left: 0;
@@ -340,7 +426,7 @@ export default {
   transition: 0.2s;
 }
 
-.slider:before {
+.switch-slider:before {
   content: "";
   position: absolute;
   width: 18px;
@@ -352,11 +438,11 @@ export default {
   transition: 0.2s;
 }
 
-input:checked+.slider {
+input:checked+.switch-slider {
   background: $primary;
 }
 
-input:checked+.slider:before {
+input:checked+.switch-slider:before {
   transform: translateX(19px);
 }
 
@@ -365,11 +451,11 @@ input:checked+.slider:before {
   width: 34px;
   height: 18px;
 }
-.switch.is-small .slider:before {
+.switch.is-small .switch-slider:before {
   width: 14px;
   height: 14px;
 }
-.switch.is-small input:checked+.slider:before {
+.switch.is-small input:checked+.switch-slider:before {
   transform: translateX(16px);
 }
 
@@ -412,6 +498,64 @@ input:checked+.slider:before {
   padding: 4px 0;
 }
 
+.ai-runner-selection {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Manual Terms Panel Styles */
+.ontology-tree-wrapper {
+  max-height: 17em;
+  overflow: auto;
+  margin-bottom: 0.4em !important;
+}
+
+.header-tree {
+  display: flex;
+  justify-content: right;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding-bottom: 0.3em;
+  background: $dark-bg-primary;
+  border-bottom: 1px solid $dark-border-color;
+}
+
+.sidebar-tree {
+  padding-right: 0.4em;
+  display: flex;
+  align-items: center;
+}
+
+.visibility {
+  width: 2.8em;
+  display: flex;
+  justify-content: center;
+}
+
+.opacity {
+  width: 6em;
+  text-align: center;
+  font-size: 0.8em;
+}
+
+input[type="range"].slider {
+  margin: 0;
+  padding: 0;
+}
+
+::v-deep .checkbox .control-label {
+  padding: 0 !important;
+}
+
+.no-ontology-message {
+  padding: 1em;
+  border: 1px dashed $dark-border-color;
+  border-radius: 4px;
+  margin-bottom: 1em;
+}
+
 .subtitle {
   font-size: 0.8em;
   color: $dark-text-secondary;
@@ -428,11 +572,6 @@ input:checked+.slider:before {
   margin-bottom: 10px;
 }
 
-.tags {
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
 .no-terms-notice {
   font-style: italic;
   color: $dark-text-disabled;
@@ -444,11 +583,5 @@ input:checked+.slider:before {
   border: 1px solid $dark-border-color;
   border-radius: 4px;
   padding: 5px;
-}
-
-.ai-runner-selection {
-  display: flex;
-  gap: 10px;
-  align-items: center;
 }
 </style>
