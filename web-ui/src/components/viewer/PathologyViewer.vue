@@ -1,5 +1,5 @@
 <template>
-  <div class="pathology-viewer dark-theme">
+  <div>
     <!-- Run Algorithm Controls -->
     <div class="panel">
       <div class="panel-title" @click="runAlgorithmPanelVisible = !runAlgorithmPanelVisible">
@@ -174,7 +174,7 @@ export default {
         {
           id: 1,
           runnerName: 'Mitosis Detector v1',
-          visible: true,
+          visible: false,
           includeInReport: true,
           stats: [
             { label: "Mitosis", count: 200, percent: null, color: "#E53935", showOnImage: true },
@@ -186,7 +186,7 @@ export default {
           id: 2,
           runnerName: 'Tumor Segmentation v2',
           visible: false,
-          includeInReport: false,
+          includeInReport: true,
           stats: [
             { label: "Invasive carcinoma", count: 18.8, percent: 18.8, color: "#1E88E5", showOnImage: true },
             { label: "DCIS", count: "<0.5", percent: 0.5, color: "#00ACC1", showOnImage: false },
@@ -364,16 +364,16 @@ export default {
 @import '../../assets/styles/dark-variables';
 @import '../../assets/styles/colors.scss';
 
-.pathology-viewer.dark-theme {
-  padding: 10px;
-}
-
 .panel {
   width: 380px;
   border: 1px solid $dark-border-color;
   border-radius: 8px;
   background: $dark-bg-primary; // Applied to both for consistency
   color: $dark-text-primary;
+}
+
+.panel:not(:last-child) {
+    margin-bottom: 5px;
 }
 
 @media (max-width: 768px) {
@@ -407,7 +407,7 @@ export default {
 }
 
 .panel + .panel {
-  margin-top: 10px;
+  margin-top: 2px;
 }
 
 .arrow {
