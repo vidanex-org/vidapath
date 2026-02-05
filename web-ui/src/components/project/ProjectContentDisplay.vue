@@ -142,7 +142,7 @@ export default {
         } else if (this.selectedItemType === 'imageGroup') {
           // Fetch images for the image group
           const imageInstanceCollection = new ImageInstanceCollection({
-            filterKey: 'imageGroup',
+            filterKey: 'imagegroup',
             filterValue: this.selectedItem.id
           });
           const fetchedImages = await imageInstanceCollection.fetchAll();

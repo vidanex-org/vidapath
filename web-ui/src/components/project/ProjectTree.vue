@@ -1,8 +1,20 @@
 <template>
   <aside class="menu">
-    <p class="menu-label">
-      Projects
-    </p>
+    <div class="menu-heading">
+      <p class="menu-label">
+        Projects
+      </p>
+      <div class="actions-bar">
+        <div class="buttons has-addons">
+          <button class="button is-small" :class="{ 'is-primary': all }" @click="all = true; revision++">
+            All
+          </button>
+          <button class="button is-small" :class="{ 'is-primary': !all }" @click="all = false; revision++">
+            My
+          </button>
+        </div>
+      </div>
+    </div>
     <ul class="menu-list">
       <li v-for="project in projects" :key="project.id">
         <a @click="toggleProject(project)" @contextmenu.prevent="showContextMenu($event, 'project', project)"
@@ -48,16 +60,25 @@ export default {
       selectedImageGroup: null,
       contextMenuItems: [],
       contextMenuItem: null,
-      contextMenuType: null
+      contextMenuType: null,
+      all: true,
+      revision: 0,
+      imageGroupProjectMap: {}
     };
+  },
+  watch: {
+    revision() {
+      this.fetchProjects();
+    }
   },
   methods: {
     async fetchProjects() {
       try {
-        const projectCollection = new ProjectCollection();
+        const projectCollection = new ProjectCollection({ all: this.all });
         const fetchedProjects = await projectCollection.fetchAll();
         this.projects = fetchedProjects.array.map(p => ({ ...p, imageGroups: [], isExpanded: false }));
-
+        
+        let imageGroupProjectMap = {};
         for (const project of this.projects) {
           const imageGroupCollection = new ImageGroupCollection({
             filterKey: 'project',
@@ -65,7 +86,11 @@ export default {
           });
           const fetchedImageGroups = await imageGroupCollection.fetchAll();
           project.imageGroups = fetchedImageGroups.array;
+          project.imageGroups.forEach(ig => {
+            imageGroupProjectMap[ig.id] = project.id;
+          });
         }
+        this.imageGroupProjectMap = imageGroupProjectMap;
       } catch (error) {
         console.error('Error fetching projects or image groups:', error);
       }
@@ -165,6 +190,13 @@ export default {
 
 <style scoped lang="scss">
 @import '@/assets/styles/dark-variables.scss';
+
+.menu-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
 
 .menu-label {
   color: $dark-text-secondary;

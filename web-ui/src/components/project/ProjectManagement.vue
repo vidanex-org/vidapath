@@ -2,7 +2,7 @@
   <div class="project-management-container">
     <div class="columns is-gapless">
       <div class="column is-one-quarter file-tree-column">
-        <h2 class="title is-4">Project Tree</h2>
+        <h2 class="title is-4">Folder Management</h2>
         <ProjectTree ref="projectTree" @select-item="handleItemSelected" @add-subfolder="openAddImageGroupModal" @rename-item="openRenameModal" />
       </div>
       <div class="column content-display-column">
@@ -10,7 +10,7 @@
       </div>
     </div>
     <AddImageGroupModal :active.sync="isAddImageGroupModalActive" @create="createImageGroup" />
-    <AddImageModal :active.sync="isAddImageModalActive" :project="selectedProject" @addImage="handleImageAdded" />
+    <AddImageModal :active.sync="isAddImageModalActive" :project="selectedProject" :image-group="imageGroupForNewImage" :context="addImageContext" @addImage="handleImageAdded" />
     <ShareProjectModal :active.sync="isShareModalActive" :project="selectedProject" />
     <RenameModal :active.sync="isRenameModalActive" :item-name="itemToRename ? itemToRename.name : ''" @rename="handleRename" />
   </div>
@@ -45,8 +45,10 @@ export default {
       isShareModalActive: false,
       isRenameModalActive: false,
       projectForNewImageGroup: null,
+      imageGroupForNewImage: null,
       itemToRename: null,
       itemToRenameType: null,
+      addImageContext: 'project',
       revision: 0
     };
   },
@@ -63,12 +65,8 @@ export default {
       console.log('Selected Item:', this.selectedItemType, this.selectedItem, 'in project', this.selectedProject);
     },
     findProjectForImageGroup(imageGroup) {
-      for (const project of this.$refs.projectTree.projects) {
-        if (project.imageGroups.some(ig => ig.id === imageGroup.id)) {
-          return project;
-        }
-      }
-      return null;
+      const projectId = this.$refs.projectTree.imageGroupProjectMap[imageGroup.id];
+      return this.$refs.projectTree.projects.find(p => p.id === projectId);
     },
     closeAllModals() {
       this.isAddImageGroupModalActive = false;
@@ -97,6 +95,13 @@ export default {
     },
     openAddImageModal() {
       this.closeAllModals();
+      if(this.selectedItemType === 'imageGroup') {
+        this.addImageContext = 'imageGroup';
+        this.imageGroupForNewImage = this.selectedItem;
+      } else {
+        this.addImageContext = 'project';
+        this.imageGroupForNewImage = null;
+      }
       this.isAddImageModalActive = true;
     },
     handleImageAdded() {
