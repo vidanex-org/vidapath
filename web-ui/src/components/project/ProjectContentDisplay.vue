@@ -39,10 +39,10 @@
 
       <div v-else class="columns is-multiline">
         <div class="column is-one-quarter" v-for="group in imageGroups" :key="`group-${group.id}`">
-          <div class="card">
+          <div class="card full-height-card">
             <div class="card-image">
-              <figure class="image is-4by3">
-                <i class="fas fa-folder fa-5x"></i> <!-- Folder icon for image groups -->
+              <figure class="image">
+                <i class="fas fa-folder"></i> <!-- Folder icon for image groups -->
               </figure>
             </div>
             <div class="card-content">
@@ -175,20 +175,24 @@ export default {
   border-radius: 8px;
   box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
 
+  &.full-height-card {
+    height: 100%;
+  }
+
   .card-image {
     background-color: $dark-bg-secondary;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
     .fa-folder {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
+      font-size: 5rem;
       color: $warning;
     }
   }
-
+  
   .card-content {
     .title, .subtitle {
       color: $dark-text-primary;

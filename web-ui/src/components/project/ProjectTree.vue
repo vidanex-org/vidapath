@@ -18,12 +18,12 @@
     <ul class="menu-list">
       <li v-for="project in projects" :key="project.id">
         <a @click="toggleProject(project)" @contextmenu.prevent="showContextMenu($event, 'project', project)"
-          :class="{'is-active': selectedProject && selectedProject.id === project.id}">
-          <span class="icon is-small">
-            <i class="fas fa-folder"></i>
-          </span>
+          :class="{'is-active': !isImageGroupSelected && selectedProject && selectedProject.id === project.id}">
           <span class="icon is-small">
             <i :class="project.isExpanded ? 'fas fa-angle-down' : 'fas fa-angle-right'"></i>
+          </span>
+          <span class="icon is-small">
+            <i class="fas fa-folder"></i>
           </span>
           {{ project.name }}
         </a>
@@ -63,7 +63,8 @@ export default {
       contextMenuType: null,
       all: true,
       revision: 0,
-      imageGroupProjectMap: {}
+      imageGroupProjectMap: {},
+      isImageGroupSelected: false
     };
   },
   watch: {
@@ -103,10 +104,12 @@ export default {
       this.selectedProject = project;
       this.selectedImageGroup = null;
       this.$emit('select-item', { type: 'project', item: project });
+      this.isImageGroupSelected = false;
     },
     selectImageGroup(imageGroup) {
       this.selectedImageGroup = imageGroup;
       this.$emit('select-item', { type: 'imageGroup', item: imageGroup });
+      this.isImageGroupSelected = true;
     },
     showContextMenu(event, type, item) {
       this.contextMenuItem = item;
@@ -223,6 +226,10 @@ export default {
 
   .icon {
     margin-right: 5px;
+  }
+
+  .fa-folder {
+    color: $warning;
   }
 }
 
