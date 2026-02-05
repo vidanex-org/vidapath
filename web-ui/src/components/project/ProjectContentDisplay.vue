@@ -4,9 +4,15 @@
       <p class="title is-5">Select a project or image group from the tree to view its content.</p>
     </div>
     <div v-else>
-      <h3 class="title is-5">{{ selectedItem.name }} ({{ selectedItemType === 'project' ? 'Project' : 'Image Group' }})</h3>
+      <h3 class="title is-5">{{ selectedItem.name }} ({{ selectedItemType === 'project' ? 'Folder' : 'Sub-folder' }})</h3>
 
       <div class="field is-grouped is-grouped-right">
+        <p class="control" v-if="selectedItemType === 'project'">
+          <button class="button" @click="$emit('add-subfolder', selectedItem)">
+            <span class="icon is-small"><i class="fas fa-folder-plus"></i></span>
+            <span>Create Sub-folder</span>
+          </button>
+        </p>
         <p class="control">
           <button class="button is-info" @click="$emit('add-image')">
             <span class="icon is-small"><i class="fas fa-plus"></i></span>
@@ -14,21 +20,9 @@
           </button>
         </p>
         <p class="control">
-          <button class="button is-warning" @click="$emit('rename')">
-            <span class="icon is-small"><i class="fas fa-edit"></i></span>
-            <span>Rename</span>
-          </button>
-        </p>
-        <p class="control">
-          <button class="button is-primary" @click="$emit('share')">
+          <button class="button is-link" @click="$emit('share')">
             <span class="icon is-small"><i class="fas fa-share-alt"></i></span>
             <span>Share</span>
-          </button>
-        </p>
-        <p class="control" v-if="selectedItemType === 'project'">
-          <button class="button is-success" @click="$emit('add-subfolder', selectedItem)">
-            <span class="icon is-small"><i class="fas fa-folder-plus"></i></span>
-            <span>Create Folder (Image Group)</span>
           </button>
         </p>
       </div>
@@ -38,7 +32,7 @@
       </div>
 
       <div v-else class="columns is-multiline">
-        <div class="column is-one-quarter" v-for="group in imageGroups" :key="`group-${group.id}`">
+        <div class="column is-one-fifth" v-for="group in imageGroups" :key="`group-${group.id}`">
           <div class="card full-height-card">
             <div class="card-image">
               <figure class="image">
@@ -48,8 +42,8 @@
             <div class="card-content">
               <div class="media">
                 <div class="media-content">
-                  <p class="title is-5">{{ group.name }}</p>
-                  <p class="subtitle is-6">Image Group</p>
+                  <p class="title is-6">{{ group.name }}</p>
+                  <p class="subtitle is-7">Image Group</p>
                 </div>
               </div>
             </div>

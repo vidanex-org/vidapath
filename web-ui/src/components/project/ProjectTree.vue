@@ -2,7 +2,7 @@
   <aside class="menu">
     <div class="menu-heading">
       <p class="menu-label">
-        Projects
+        Folders tree
       </p>
       <div class="actions-bar">
         <div class="buttons has-addons">
@@ -92,6 +92,11 @@ export default {
           });
         }
         this.imageGroupProjectMap = imageGroupProjectMap;
+        
+        // 自动选择第一个项目（如果存在且当前没有选中的项目）
+        if (this.projects.length > 0 && !this.selectedProject && !this.selectedImageGroup) {
+          this.selectProject(this.projects[0]);
+        }
       } catch (error) {
         console.error('Error fetching projects or image groups:', error);
       }
@@ -169,7 +174,7 @@ export default {
     deleteItem(item) {
       this.$buefy.dialog.confirm({
         title: `Delete ${this.contextMenuType}`,
-        message: `Are you sure you want to delete <strong>${item.name}</strong>? This action cannot be undone.`,
+        message: `Are you sure you want to delete <b>${item.name}</b>? This action cannot be undone.`,
         type: 'is-danger',
         confirmText: 'Delete',
         onConfirm: async () => {
@@ -203,7 +208,7 @@ export default {
 
 .menu-label {
   color: $dark-text-secondary;
-  font-size: 0.9em;
+  font-size: 1.2em;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }

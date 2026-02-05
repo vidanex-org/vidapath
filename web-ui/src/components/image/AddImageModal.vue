@@ -108,11 +108,19 @@ export default {
     imageCollection() {
       let collection;
       if (this.context === 'project') {
+        // 添加空值保护
+        if (!this.project) {
+          return new AbstractImageCollection();
+        }
         collection = new AbstractImageCollection({project: this.project.id});
         if (this.searchString) {
           collection['originalFilename'] = {ilike: encodeURIComponent(this.searchString)};
         }
       } else { // imageGroup context
+        // 添加空值保护
+        if (!this.project) {
+          return new ImageInstanceCollection();
+        }
         collection = new ImageInstanceCollection({
           filterKey: 'project',
           filterValue: this.project.id,

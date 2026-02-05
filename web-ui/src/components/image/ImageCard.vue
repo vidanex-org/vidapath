@@ -1,5 +1,5 @@
 <template>
-  <div class="column is-one-quarter">
+  <div class="column is-one-fifth">
     <ImagePreview :image="image" :project="project" />
   </div>
 </template>

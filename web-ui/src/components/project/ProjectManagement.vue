@@ -2,7 +2,6 @@
   <div class="project-management-container">
     <div class="columns is-gapless">
       <div class="column is-one-quarter file-tree-column">
-        <h2 class="title is-4">Folder Management</h2>
         <ProjectTree ref="projectTree" @select-item="handleItemSelected" @add-subfolder="openAddImageGroupModal" @rename-item="openRenameModal" />
       </div>
       <div class="column content-display-column">
