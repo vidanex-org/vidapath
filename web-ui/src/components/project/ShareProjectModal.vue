@@ -49,9 +49,9 @@
 
     <template #footer>
       <button class="button" @click="$emit('update:active', false)">
-        Close
+        Cancel
       </button>
-      <button class="button is-link" @click="shareProject" :disabled="loading">
+      <button class="button is-primary" @click="shareProject" :disabled="loading">
         Share
       </button>
     </template>
