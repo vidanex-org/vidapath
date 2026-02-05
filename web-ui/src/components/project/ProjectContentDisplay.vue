@@ -19,6 +19,12 @@
             <span>Add Image</span>
           </button>
         </p>
+        <p class="control" v-if="selectedItemType === 'project' && !$keycloak.hasTemporaryToken">
+          <button class="button is-primary" @click="runAIOnProject(selectedItem)">
+            <span class="icon is-small"><i class="fas fa-robot"></i></span>
+            <span>Run AI</span>
+          </button>
+        </p>
         <p class="control">
           <button class="button is-link" @click="$emit('share')">
             <span class="icon is-small"><i class="fas fa-share-alt"></i></span>
@@ -57,17 +63,26 @@
         <p>No content to display.</p>
       </div>
     </div>
+
+    <!-- Single AI Runner Selection Modal -->
+    <SelectAIRunnerModal 
+      :active.sync="singleAIRunnerSelectionModal" 
+      :ai-runners="aiRunners"
+      @confirm="handleAIRunnerSelected"
+    />
   </div>
 </template>
 
 <script>
-import { ImageInstanceCollection, ImageGroupCollection } from '@/api';
+import { ImageInstanceCollection, ImageGroupCollection, AIRunner, AIAlgorithmJob } from '@/api';
 import ImageCard from '../image/ImageCard.vue';
+import SelectAIRunnerModal from './SelectAIRunnerModal.vue';
 
 export default {
   name: 'ProjectContentDisplay',
   components: {
-    ImageCard
+    ImageCard,
+    SelectAIRunnerModal
   },
   props: {
     selectedItem: {
@@ -91,7 +106,10 @@ export default {
     return {
       loading: false,
       images: [],
-      imageGroups: []
+      imageGroups: [],
+      aiRunners: [],
+      singleAIRunnerSelectionModal: false,
+      projectToRunAI: null
     };
   },
   watch: {
@@ -103,6 +121,15 @@ export default {
     },
     revision() {
       this.fetchContent();
+    }
+  },
+  async created() {
+    // Load AI runners when component is created
+    try {
+      this.aiRunners = await AIRunner.fetchAll();
+    } catch (error) {
+      console.error('Error fetching AI runners:', error);
+      this.aiRunners = [];
     }
   },
   methods: {
@@ -147,6 +174,53 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+
+    runAIOnProject(project) {
+      // 单个项目运行AI功能
+      if (this.aiRunners.length === 0) {
+        this.$buefy.toast.open({
+          message: this.$t('no-ai-runners-available'),
+          type: 'is-danger'
+        });
+        return;
+      }
+
+      this.projectToRunAI = project;
+      this.singleAIRunnerSelectionModal = true;
+    },
+
+    handleAIRunnerSelected(selectedRunner) {
+      this.$buefy.dialog.confirm({
+        title: `Confirm whether to run the ${selectedRunner.name} algorithm`,
+        message: 'This run will be in the background, so don\'t need to wait for.',
+        type: 'is-primary',
+        confirmText: this.$t('button-confirm'),
+        cancelText: this.$t('button-cancel'),
+        onConfirm: async () => {
+          try {
+            // 为单个项目运行AI算法
+            const requestData = {
+              airunnerId: selectedRunner.id,
+              projectId: this.projectToRunAI.id
+            };
+
+            // 调用API运行AI算法
+            await AIAlgorithmJob.runAlgorithm(requestData);
+
+            this.$buefy.toast.open({
+              message: this.$t('single-ai-processing-started'),
+              type: 'is-success'
+            });
+          } catch (error) {
+            console.error('Error running AI algorithm:', error);
+            this.$buefy.toast.open({
+              message: this.$t('error-running-ai-algorithm'),
+              type: 'is-danger'
+            });
+          }
+        }
+      });
     }
   }
 };
