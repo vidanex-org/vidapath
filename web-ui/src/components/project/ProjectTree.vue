@@ -1,45 +1,68 @@
 <template>
-  <aside class="menu">
-    <div class="menu-heading">
-      <p class="menu-label">
-        Folders tree
-      </p>
-      <div class="actions-bar">
-        <div class="buttons has-addons">
-          <button class="button is-small" :class="{ 'is-primary': all }" @click="all = true; revision++">
-            All
-          </button>
-          <button class="button is-small" :class="{ 'is-primary': !all }" @click="all = false; revision++">
-            My
-          </button>
+  <aside class="project-tree-menu">
+    <div class="tree-header">
+      <div class="tree-filter">
+        <div class="field has-addons">
+          <p class="control">
+            <button 
+              class="button is-small" 
+              :class="{ 'is-primary': all }" 
+              @click="all = true; revision++"
+            >
+              All
+            </button>
+          </p>
+          <p class="control">
+            <button 
+              class="button is-small" 
+              :class="{ 'is-primary': !all }" 
+              @click="all = false; revision++"
+            >
+              My
+            </button>
+          </p>
         </div>
       </div>
     </div>
     <ul class="menu-list">
-      <li v-for="project in projects" :key="project.id">
-        <a @click="toggleProject(project)" @contextmenu.prevent="showContextMenu($event, 'project', project)"
-          :class="{'is-active': !isImageGroupSelected && selectedProject && selectedProject.id === project.id}">
-          <span class="icon is-small">
+      <li v-for="project in projects" :key="project.id" class="project-item">
+        <a 
+          @click="toggleProject(project)" 
+          @contextmenu.prevent="showContextMenu($event, 'project', project)"
+          :class="{'is-active': !isImageGroupSelected && selectedProject && selectedProject.id === project.id}"
+          class="project-link"
+        >
+          <span class="icon is-small expand-icon">
             <i :class="project.isExpanded ? 'fas fa-angle-down' : 'fas fa-angle-right'"></i>
           </span>
-          <span class="icon is-small">
+          <span class="icon is-small folder-icon">
             <i class="fas fa-folder"></i>
           </span>
-          {{ project.name }}
+          <span class="project-name">{{ project.name }}</span>
         </a>
-        <ul v-if="project.isExpanded">
-          <li v-for="imageGroup in project.imageGroups" :key="imageGroup.id">
-            <a @click="selectImageGroup(imageGroup)" @contextmenu.prevent="showContextMenu($event, 'imageGroup', imageGroup)"
-              :class="{'is-active': selectedImageGroup && selectedImageGroup.id === imageGroup.id}">
-              <span class="icon is-small">
+        <ul v-if="project.isExpanded" class="image-group-list">
+          <li v-for="imageGroup in project.imageGroups" :key="imageGroup.id" class="image-group-item">
+            <a 
+              @click="selectImageGroup(imageGroup)" 
+              @contextmenu.prevent="showContextMenu($event, 'imageGroup', imageGroup)"
+              :class="{'is-active': selectedImageGroup && selectedImageGroup.id === imageGroup.id}"
+              class="image-group-link"
+            >
+              <span class="icon is-small folder-icon">
                 <i class="fas fa-folder"></i>
               </span>
-              {{ imageGroup.name }}
+              <span class="image-group-name">{{ imageGroup.name }}</span>
             </a>
           </li>
         </ul>
       </li>
     </ul>
+    <div v-if="projects.length === 0" class="empty-state">
+      <div class="empty-icon">
+        <i class="fas fa-folder-open"></i>
+      </div>
+      <p class="empty-text">No projects found</p>
+    </div>
     <ContextMenu ref="contextMenu" :items="contextMenuItems" @item-click="handleMenuItemClick" v-click-outside="closeContextMenu" />
   </aside>
 </template>
@@ -199,47 +222,167 @@ export default {
 <style scoped lang="scss">
 @import '@/assets/styles/dark-variables.scss';
 
-.menu-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+.project-tree-menu {
+  height: 100%;
+  
+  .tree-header {
+    padding: 0 0 1rem 0;
+    border-bottom: 1px solid $dark-border-color;
+    margin-bottom: 1rem;
+    
+    .tree-filter {
+      display: flex;
+      justify-content: flex-end;
+      
+      .button {
+        border-radius: 4px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85em;
+        margin-left: 0.25rem;
+        
+        &.is-primary {
+          background-color: $primary;
+          border-color: $primary;
+          color: $dark-bg-primary;
+        }
+      }
+    }
+  }
+  
+  .menu-list {
+    margin: 0;
+    padding: 0;
+    
+    .project-item {
+      margin-bottom: 0.5rem;
+      
+      .project-link {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        color: $dark-text-primary;
+        text-decoration: none;
+        font-weight: 500;
+        position: relative;
+        
+        &:hover {
+          background-color: $dark-bg-hover;
+          transform: translateX(4px);
+        }
+        
+        &.is-active {
+          background-color: rgba($primary, 0.2);
+          border-left: 3px solid $primary;
+          color: $primary;
+          
+          .folder-icon i {
+            color: $primary;
+          }
+        }
+        
+        .expand-icon {
+          margin-right: 8px;
+          opacity: 0.7;
+          transition: transform 0.2s ease;
+        }
+        
+        .folder-icon {
+          margin-right: 10px;
+          color: $warning;
+        }
+        
+        .project-name {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+      
+      .image-group-list {
+        margin: 0.5rem 0 0 1.5rem;
+        padding: 0;
+        list-style: none;
+        
+        .image-group-item {
+          margin-bottom: 0.25rem;
+          
+          .image-group-link {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            color: $dark-text-secondary;
+            text-decoration: none;
+            font-size: 0.95em;
+            
+            &:hover {
+              background-color: $dark-bg-hover;
+              color: $dark-text-primary;
+            }
+            
+            &.is-active {
+              background-color: rgba($info, 0.2);
+              color: $info;
+              
+              .folder-icon i {
+                color: $info;
+              }
+            }
+            
+            .folder-icon {
+              margin-right: 8px;
+              color: $warning;
+            }
+            
+            .image-group-name {
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    color: $dark-text-disabled;
+    
+    .empty-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      opacity: 0.6;
+    }
+    
+    .empty-text {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+  }
 }
 
-.menu-label {
-  color: $dark-text-secondary;
-  font-size: 1.2em;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 6px;
 }
 
-.menu-list a {
-  color: $dark-text-primary;
-  border-radius: 4px;
-  transition: all 0.2s ease-in-out;
-  display: flex;
-  align-items: center;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 
+::-webkit-scrollbar-thumb {
+  background: $dark-scrollbar-thumb;
+  border-radius: 3px;
   &:hover {
-    background-color: $dark-bg-hover;
+    background: $dark-scrollbar-thumb-hover;
   }
-
-  &.is-active {
-    background-color: $dark-bg-active;
-    color: $dark-text-primary;
-  }
-
-  .icon {
-    margin-right: 5px;
-  }
-
-  .fa-folder {
-    color: $warning;
-  }
-}
-
-.menu-list ul {
-  margin-left: 1em;
-  border-left: 1px solid $dark-border-color;
 }
 </style>

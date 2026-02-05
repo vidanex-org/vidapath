@@ -1,66 +1,144 @@
 <template>
   <div class="project-content-display">
-    <div v-if="!selectedItem" class="has-text-centered">
-      <p class="title is-5">Select a project or image group from the tree to view its content.</p>
+    <div v-if="!selectedItem" class="empty-selection-state">
+      <div class="empty-icon">
+        <i class="fas fa-folder-tree"></i>
+      </div>
+      <h3 class="title is-4 empty-title">Select a project or folder</h3>
+      <p class="subtitle is-6 empty-subtitle">Choose an item from the project tree to view and manage its content.</p>
     </div>
-    <div v-else>
-      <h3 class="title is-5">{{ selectedItem.name }} ({{ selectedItemType === 'project' ? 'Folder' : 'Sub-folder' }})</h3>
+    <div v-else class="content-wrapper">
+      <div class="content-header">
+        <div class="content-title-section">
+          <h3 class="title is-5 content-title">
+            <span class="folder-icon"><i class="fas fa-folder"></i></span>
+            {{ selectedItem.name }}
+            <span class="content-type-badge" :class="`is-${selectedItemType === 'project' ? 'warning' : 'info'}`">
+              {{ selectedItemType === 'project' ? 'Folder' : 'Sub-folder' }}
+            </span>
+          </h3>
+        </div>
 
-      <div class="field is-grouped is-grouped-right">
-        <p class="control" v-if="selectedItemType === 'project'">
-          <button class="button" @click="$emit('add-subfolder', selectedItem)">
-            <span class="icon is-small"><i class="fas fa-folder-plus"></i></span>
-            <span>Create Sub-folder</span>
-          </button>
-        </p>
-        <p class="control">
-          <button class="button is-info" @click="$emit('add-image')">
-            <span class="icon is-small"><i class="fas fa-plus"></i></span>
-            <span>Add Image</span>
-          </button>
-        </p>
-        <p class="control" v-if="selectedItemType === 'project' && !$keycloak.hasTemporaryToken">
-          <button class="button is-primary" @click="runAIOnProject(selectedItem)">
-            <span class="icon is-small"><i class="fas fa-robot"></i></span>
-            <span>Run AI</span>
-          </button>
-        </p>
-        <p class="control">
-          <button class="button is-link" @click="$emit('share')">
-            <span class="icon is-small"><i class="fas fa-share-alt"></i></span>
-            <span>Share</span>
-          </button>
-        </p>
+        <div class="content-actions">
+          <div class="field is-grouped">
+            <p class="control" v-if="selectedItemType === 'project'">
+              <button 
+                class="button is-outlined is-warning" 
+                @click="$emit('add-subfolder', selectedItem)"
+                title="Create a new sub-folder"
+              >
+                <span class="icon is-small"><i class="fas fa-folder-plus"></i></span>
+                <span>Sub-folder</span>
+              </button>
+            </p>
+            <p class="control">
+              <button 
+                class="button is-outlined is-info" 
+                @click="$emit('add-image')"
+                title="Add new images to this folder"
+              >
+                <span class="icon is-small"><i class="fas fa-plus"></i></span>
+                <span>Add Image</span>
+              </button>
+            </p>
+            <p class="control" v-if="selectedItemType === 'project' && !$keycloak.hasTemporaryToken">
+              <button 
+                class="button is-outlined is-primary" 
+                @click="runAIOnProject(selectedItem)"
+                title="Run AI analysis on all images in this project"
+              >
+                <span class="icon is-small"><i class="fas fa-robot"></i></span>
+                <span>Run AI</span>
+              </button>
+            </p>
+            <p class="control">
+              <button 
+                class="button is-outlined is-link" 
+                @click="$emit('share')"
+                title="Share this folder with others"
+              >
+                <span class="icon is-small"><i class="fas fa-share-alt"></i></span>
+                <span>Share</span>
+              </button>
+            </p>
+            <p class="control">
+              <button 
+                class="button is-outlined" 
+                @click="$emit('rename')"
+                title="Rename this folder"
+              >
+                <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                <span>Rename</span>
+              </button>
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div v-if="loading" class="has-text-centered">
+      <div v-if="loading" class="loading-container">
         <b-loading :is-full-page="false" :active="loading" />
       </div>
 
-      <div v-else class="columns is-multiline">
-        <div class="column is-one-fifth" v-for="group in imageGroups" :key="`group-${group.id}`">
-          <div class="card full-height-card">
-            <div class="card-image">
-              <figure class="image">
-                <i class="fas fa-folder"></i> <!-- Folder icon for image groups -->
-              </figure>
-            </div>
-            <div class="card-content">
-              <div class="media">
-                <div class="media-content">
-                  <p class="title is-6">{{ group.name }}</p>
-                  <p class="subtitle is-7">Image Group</p>
+      <div v-else class="content-grid">
+        <div 
+          v-if="imageGroups.length > 0" 
+          class="section-header"
+        >
+          <h4 class="subtitle is-6">Folders ({{ imageGroups.length }})</h4>
+        </div>
+        
+        <div class="columns is-multiline image-groups-grid">
+          <div 
+            class="column is-one-quarter" 
+            v-for="group in imageGroups" 
+            :key="`group-${group.id}`"
+          >
+            <div 
+              class="card folder-card"
+              @click="selectImageGroup(group)"
+            >
+              <div class="card-image">
+                <figure class="image">
+                  <i class="fas fa-folder folder-icon-large"></i>
+                </figure>
+              </div>
+              <div class="card-content">
+                <div class="media">
+                  <div class="media-content">
+                    <p class="title is-6 folder-name">{{ group.name }}</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <ImageCard v-for="image in images" :key="`image-${image.id}`" :image="image" :project="selectedProject" />
-      </div>
+        <div 
+          v-if="images.length > 0" 
+          class="section-header"
+        >
+          <h4 class="subtitle is-6">Images ({{ images.length }})</h4>
+        </div>
+        
+        <div class="columns is-multiline images-grid">
+          <ImageCard 
+            v-for="image in images" 
+            :key="`image-${image.id}`" 
+            :image="image" 
+            :project="selectedProject" 
+          />
+        </div>
 
-      <div v-if="!loading && images.length === 0 && imageGroups.length === 0" class="has-text-centered">
-        <p>No content to display.</p>
+        <div 
+          v-if="!loading && images.length === 0 && imageGroups.length === 0" 
+          class="empty-content-state"
+        >
+          <div class="empty-icon">
+            <i class="fas fa-inbox"></i>
+          </div>
+          <p class="empty-text">This folder is empty</p>
+          <p class="empty-hint">Add images or create sub-folders to get started</p>
+        </div>
       </div>
     </div>
 
@@ -221,6 +299,10 @@ export default {
           }
         }
       });
+    },
+    
+    selectImageGroup(group) {
+      this.$emit('select-item', { type: 'imageGroup', item: group });
     }
   }
 };
@@ -230,40 +312,193 @@ export default {
 @import '@/assets/styles/dark-variables.scss';
 
 .project-content-display {
-  padding: 1rem;
-
-  .title {
-    color: $dark-text-primary;
-  }
-}
-
-.card {
-  background-color: $dark-bg-panel;
-  color: $dark-text-primary;
-  border-radius: 8px;
-  box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
-
-  &.full-height-card {
-    height: 100%;
-  }
-
-  .card-image {
-    background-color: $dark-bg-secondary;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+  height: 100%;
+  padding: 1.5rem;
+  
+  .empty-selection-state {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-
-    .fa-folder {
-      font-size: 5rem;
-      color: $warning;
+    justify-content: center;
+    height: 100%;
+    color: $dark-text-disabled;
+    
+    .empty-icon {
+      font-size: 4rem;
+      margin-bottom: 1.5rem;
+      opacity: 0.4;
+    }
+    
+    .empty-title {
+      color: $dark-text-secondary;
+      margin-bottom: 0.5rem;
+    }
+    
+    .empty-subtitle {
+      color: $dark-text-disabled;
+      opacity: 0.8;
     }
   }
   
-  .card-content {
-    .title, .subtitle {
-      color: $dark-text-primary;
+  .content-wrapper {
+    height: 100%;
+    
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid $dark-border-color;
+      
+      .content-title-section {
+        .content-title {
+          color: $dark-text-primary;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin: 0;
+          
+          .folder-icon {
+            color: $warning;
+            font-size: 1.2em;
+          }
+          
+          .content-type-badge {
+            font-size: 0.75em;
+            padding: 0.25em 0.5em;
+            border-radius: 4px;
+            font-weight: 600;
+            
+            &.is-warning {
+              background-color: rgba($warning, 0.2);
+              color: $warning;
+            }
+            
+            &.is-info {
+              background-color: rgba($info, 0.2);
+              color: $info;
+            }
+          }
+        }
+      }
+      
+      .content-actions {
+        .button {
+          border-radius: 6px;
+          padding: 0.5em 0.75em;
+          font-size: 0.85em;
+          transition: all 0.2s ease;
+          
+          &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          
+          .icon {
+            margin-right: 0.375em;
+          }
+        }
+      }
+    }
+    
+    .loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+    }
+    
+    .content-grid {
+      .section-header {
+        margin: 1.5rem 0 1rem;
+        
+        .subtitle {
+          color: $dark-text-secondary;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          opacity: 0.8;
+        }
+      }
+      
+      .image-groups-grid,
+      .images-grid {
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+      }
+      
+      .folder-card {
+        background-color: $dark-bg-panel;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        
+        &:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+          border-color: $primary;
+          
+          .folder-icon-large {
+            color: $primary;
+          }
+        }
+        
+        .card-image {
+          background-color: $dark-bg-secondary;
+          border-top-left-radius: 8px;
+          border-top-right-radius: 8px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 1.5rem;
+          flex-shrink: 0;
+          
+          .folder-icon-large {
+            font-size: 3rem;
+            color: $warning;
+          }
+        }
+        
+        .card-content {
+          .folder-name {
+            color: $dark-text-primary;
+            font-weight: 600;
+            font-size: 0.95em;
+            text-align: center;
+          }
+        }
+      }
+      
+      .empty-content-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        text-align: center;
+        color: $dark-text-disabled;
+        
+        .empty-icon {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+          opacity: 0.4;
+        }
+        
+        .empty-text {
+          font-size: 1.2rem;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          color: $dark-text-secondary;
+        }
+        
+        .empty-hint {
+          opacity: 0.7;
+        }
+      }
     }
   }
 }

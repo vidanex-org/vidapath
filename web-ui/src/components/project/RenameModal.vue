@@ -1,12 +1,29 @@
 <template>
-  <cytomine-modal :active="active" title="Rename" @close="close">
-    <b-field label="New Name">
-      <b-input v-model="newName" :placeholder="`Enter new name for ${itemName}`" required></b-input>
-    </b-field>
+  <cytomine-modal :active="active" title="Rename Item" @close="close">
+    <div class="modal-form-content">
+      <div class="form-section">
+        <label class="form-label">New Name</label>
+        <b-input 
+          v-model="newName" 
+          placeholder="Enter new name" 
+          required
+          ref="nameInput"
+          @keyup.enter="renameItem"
+        ></b-input>
+        <p class="help-text">The name will be updated immediately after confirmation.</p>
+      </div>
+    </div>
 
     <template #footer>
-      <button class="button" type="button" @click="close">Cancel</button>
-      <button class="button is-primary" @click="renameItem" :disabled="!newName">Save</button>
+      <button class="button is-outlined" type="button" @click="close">Cancel</button>
+      <button 
+        class="button is-primary" 
+        @click="renameItem" 
+        :disabled="!newName.trim() || newName === itemName"
+        :loading="isRenaming"
+      >
+        Rename
+      </button>
     </template>
   </cytomine-modal>
 </template>
@@ -31,20 +48,30 @@ export default {
   },
   data() {
     return {
-      newName: ''
+      newName: '',
+      isRenaming: false
     };
   },
   watch: {
     active(val) {
-      console.log('RenameModal active changed to:', val);
       if (val) {
-        this.newName = '';
+        this.newName = this.itemName;
+        this.isRenaming = false;
+        this.$nextTick(() => {
+          if (this.$refs.nameInput) {
+            this.$refs.nameInput.focus();
+            this.$refs.nameInput.select();
+          }
+        });
       }
     }
   },
   methods: {
     renameItem() {
-      this.$emit('rename', this.newName);
+      if (!this.newName.trim() || this.newName === this.itemName) return;
+      
+      this.isRenaming = true;
+      this.$emit('rename', this.newName.trim());
       this.$emit('update:active', false);
     },
     close() {

@@ -1,12 +1,29 @@
 <template>
-  <cytomine-modal :active="active" title="Add Sub-folder" @close="close">
-    <b-field label="Folder Name">
-      <b-input v-model="name" placeholder="Enter folder name" required></b-input>
-    </b-field>
+  <cytomine-modal :active="active" title="Create New Folder" @close="close">
+    <div class="modal-form-content">
+      <div class="form-section">
+        <label class="form-label">Folder Name</label>
+        <b-input 
+          v-model="name" 
+          placeholder="Enter a descriptive folder name" 
+          required
+          ref="nameInput"
+          @keyup.enter="createImageGroup"
+        ></b-input>
+        <p class="help-text">Choose a clear and descriptive name for your folder.</p>
+      </div>
+    </div>
 
     <template #footer>
-      <button class="button" type="button" @click="close">Cancel</button>
-      <button class="button is-primary" @click="createImageGroup" :disabled="!name">Save</button>
+      <button class="button is-outlined" type="button" @click="close">Cancel</button>
+      <button 
+        class="button is-primary" 
+        @click="createImageGroup" 
+        :disabled="!name.trim()"
+        :loading="isCreating"
+      >
+        Create Folder
+      </button>
     </template>
   </cytomine-modal>
 </template>
@@ -27,20 +44,29 @@ export default {
   },
   data() {
     return {
-      name: ''
+      name: '',
+      isCreating: false
     };
   },
   watch: {
     active(val) {
-      console.log('AddImageGroupModal active changed to:', val);
       if (val) {
         this.name = '';
+        this.isCreating = false;
+        this.$nextTick(() => {
+          if (this.$refs.nameInput) {
+            this.$refs.nameInput.focus();
+          }
+        });
       }
     }
   },
   methods: {
     createImageGroup() {
-      this.$emit('create', this.name);
+      if (!this.name.trim()) return;
+      
+      this.isCreating = true;
+      this.$emit('create', this.name.trim());
       this.$emit('update:active', false);
     },
     close() {
