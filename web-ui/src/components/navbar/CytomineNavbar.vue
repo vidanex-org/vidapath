@@ -33,7 +33,7 @@
       </navbar-dropdown> -->
         <router-link to="/projects" class="navbar-item">
           <i class="fas fa-list-alt"></i>
-          <span>{{ $t('cases') }}</span>
+          <span>{{ projectsLabel }}</span>
         </router-link>
         <router-link to="/ontology" class="navbar-item">
           <i class="fa fa-hashtag"></i>
@@ -112,6 +112,7 @@
 
 <script>
 import { get } from '@/utils/store-helpers';
+import { mapGetters } from 'vuex';
 import { changeLanguageMixin } from '@/lang.js';
 
 import NavbarDropdown from './NavbarDropdown';
@@ -139,6 +140,7 @@ export default {
     };
   },
   computed: {
+    ...mapGetters('serverConfig', ['isFolderBasedEnabled']),
     currentUser: get('currentUser/user'),
     currentProject: get('currentProject/project'),
     nbActiveProjects() {
@@ -156,6 +158,10 @@ export default {
     projects() {
       return this.$keycloak.hasTemporaryToken ? `/projects?access_token=${this.$keycloak.temporaryToken}` : '/projects';
     },
+    projectsLabel() {
+      // Dynamically return "Folders" or "Cases" based on server config
+      return this.isFolderBasedEnabled ? 'Folders' : 'Cases';
+    }
   },
   watch: {
     $route() {

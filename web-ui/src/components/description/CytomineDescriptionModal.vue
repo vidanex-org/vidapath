@@ -110,7 +110,7 @@ export default {
   }
 
   &:not(.expanded), &:not(.expanded) .modal-card-body {
-    width: 50vw;
+    width: 60vw;
     height: 60vh;
     max-height: 60vh;
   }
@@ -129,13 +129,22 @@ export default {
 
   .keyword-info {
     margin-bottom: 1em;
+    padding: 0.75em;
+    background-color: rgba(32, 156, 238, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid #209cee;
 
     .fas {
       margin-right: 0.75em;
+      color: #209cee;
     }
 
     .keyword {
       font-weight: 600;
+      font-family: monospace;
+      background-color: rgba(0, 0, 0, 0.05);
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
     }
   }
 

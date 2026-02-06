@@ -1,21 +1,30 @@
 <template>
   <aside class="project-tree-menu">
     <div class="tree-header">
+      <div class="search-box">
+        <b-input
+          v-model="searchString"
+          placeholder="Search folders..."
+          type="search"
+          icon="search"
+          size="is-small"
+        />
+      </div>
       <div class="tree-filter">
         <div class="field has-addons">
           <p class="control">
-            <button 
-              class="button is-small" 
-              :class="{ 'is-primary': all }" 
+            <button
+              class="button is-small"
+              :class="{ 'is-primary': all }"
               @click="all = true; revision++"
             >
               All
             </button>
           </p>
           <p class="control">
-            <button 
-              class="button is-small" 
-              :class="{ 'is-primary': !all }" 
+            <button
+              class="button is-small"
+              :class="{ 'is-primary': !all }"
               @click="all = false; revision++"
             >
               My
@@ -25,7 +34,7 @@
       </div>
     </div>
     <ul class="menu-list">
-      <li v-for="project in projects" :key="project.id" class="project-item">
+      <li v-for="project in filteredProjects" :key="project.id" class="project-item">
         <a 
           @click="toggleProject(project)" 
           @contextmenu.prevent="showContextMenu($event, 'project', project)"
@@ -41,7 +50,7 @@
           <span class="project-name">{{ project.name }}</span>
         </a>
         <ul v-if="project.isExpanded" class="image-group-list">
-          <li v-for="imageGroup in project.imageGroups" :key="imageGroup.id" class="image-group-item">
+          <li v-for="imageGroup in getFilteredImageGroups(project.imageGroups)" :key="imageGroup.id" class="image-group-item">
             <a 
               @click="selectImageGroup(imageGroup)" 
               @contextmenu.prevent="showContextMenu($event, 'imageGroup', imageGroup)"
@@ -57,11 +66,13 @@
         </ul>
       </li>
     </ul>
-    <div v-if="projects.length === 0" class="empty-state">
+    <div v-if="filteredProjects.length === 0" class="empty-state">
       <div class="empty-icon">
         <i class="fas fa-folder-open"></i>
       </div>
-      <p class="empty-text">No projects found</p>
+      <p class="empty-text">
+        {{ searchString ? 'No folders match your search' : 'No projects found' }}
+      </p>
     </div>
     <ContextMenu ref="contextMenu" :items="contextMenuItems" @item-click="handleMenuItemClick" v-click-outside="closeContextMenu" />
   </aside>
@@ -94,8 +105,37 @@ export default {
       contextMenuType: null,
       all: true,
       revision: 0,
-      imageGroupProjectMap: {}
+      imageGroupProjectMap: {},
+      searchString: ''
     };
+  },
+  computed: {
+    filteredProjects() {
+      if (!this.searchString || this.searchString.trim() === '') {
+        return this.projects;
+      }
+
+      const searchLower = this.searchString.toLowerCase().trim();
+      return this.projects.filter(project => {
+        // Check if project name matches
+        const projectMatches = project.name.toLowerCase().includes(searchLower);
+
+        // Check if any image group matches
+        const hasMatchingImageGroup = project.imageGroups.some(ig =>
+          ig.name.toLowerCase().includes(searchLower)
+        );
+
+        // If either matches, include the project
+        if (projectMatches || hasMatchingImageGroup) {
+          // Auto-expand projects that have matches
+          if (!project.isExpanded && hasMatchingImageGroup) {
+            project.isExpanded = true;
+          }
+          return true;
+        }
+        return false;
+      });
+    }
   },
   watch: {
     revision() {
@@ -193,6 +233,16 @@ export default {
         proj.imageGroups.push(imageGroup);
       }
     },
+    getFilteredImageGroups(imageGroups) {
+      if (!this.searchString || this.searchString.trim() === '') {
+        return imageGroups;
+      }
+
+      const searchLower = this.searchString.toLowerCase().trim();
+      return imageGroups.filter(ig =>
+        ig.name.toLowerCase().includes(searchLower)
+      );
+    },
     deleteItem(item) {
       this.$buefy.dialog.confirm({
         title: `Delete ${this.contextMenuType}`,
@@ -228,7 +278,34 @@ export default {
     padding: 0 0 1rem 0;
     border-bottom: 1px solid $dark-border-color;
     margin-bottom: 1rem;
-    
+
+    .search-box {
+      margin-bottom: 0.75rem;
+
+      ::v-deep .control {
+        width: 100%;
+      }
+
+      ::v-deep .input {
+        background-color: $dark-bg-hover;
+        border-color: $dark-border-color;
+        color: $dark-text-primary;
+
+        &:focus {
+          border-color: $primary;
+          box-shadow: 0 0 0 0.125em rgba($primary, 0.25);
+        }
+
+        &::placeholder {
+          color: $dark-text-disabled;
+        }
+      }
+
+      ::v-deep .icon {
+        color: $dark-text-disabled;
+      }
+    }
+
     .tree-filter {
       display: flex;
       justify-content: flex-end;

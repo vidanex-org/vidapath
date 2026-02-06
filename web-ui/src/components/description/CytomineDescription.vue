@@ -88,6 +88,7 @@ export default {
           edit
         },
         hasModalCard: true,
+        canCancel: ['escape', 'outside'],
         events: {
           change: newDesc => this.description = newDesc
         }

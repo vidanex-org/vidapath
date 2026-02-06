@@ -62,13 +62,23 @@
               </button>
             </p>
             <p class="control">
-              <button 
-                class="button is-outlined" 
+              <button
+                class="button is-outlined"
                 @click="$emit('rename')"
                 title="Rename this folder"
               >
                 <span class="icon is-small"><i class="fas fa-edit"></i></span>
                 <span>Rename</span>
+              </button>
+            </p>
+            <p class="control">
+              <button
+                class="button is-outlined is-success"
+                @click="showDetailsModal = true"
+                title="View folder details"
+              >
+                <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                <span>Details</span>
               </button>
             </p>
           </div>
@@ -142,6 +152,84 @@
       </div>
     </div>
 
+    <!-- Folder Details Modal -->
+    <div v-if="showDetailsModal" class="modal is-active folder-details-modal">
+      <div class="modal-background" @click="showDetailsModal = false"></div>
+      <div class="modal-card" style="max-width: 800px; width: 90%;">
+        <header class="modal-card-head">
+          <p class="modal-card-title">
+            <span class="icon is-small">
+              <i class="fas fa-folder"></i>
+            </span>
+            {{ selectedItemType === 'project' ? 'Folder' : 'Sub-folder' }} Details
+          </p>
+          <button class="delete" aria-label="close" @click="showDetailsModal = false"></button>
+        </header>
+        <section class="modal-card-body">
+          <b-loading :is-full-page="false" :active="detailsLoading" />
+          <div v-if="!detailsLoading">
+            <table class="table is-fullwidth properties-table">
+              <tbody>
+                <tr>
+                  <td class="prop-label">Name</td>
+                  <td class="prop-content">{{ selectedItem.name }}</td>
+                </tr>
+                <tr v-if="selectedItemType === 'project'">
+                  <td class="prop-label">Total Images</td>
+                  <td class="prop-content">{{ selectedItem.numberOfImages || images.length }}</td>
+                </tr>
+                <tr v-if="selectedItemType === 'imageGroup'">
+                  <td class="prop-label">Images in this folder</td>
+                  <td class="prop-content">{{ images.length }}</td>
+                </tr>
+                <tr v-if="selectedItemType === 'project'">
+                  <td class="prop-label">Sub-folders</td>
+                  <td class="prop-content">{{ imageGroups.length }}</td>
+                </tr>
+                <tr v-if="selectedItemType === 'project'">
+                  <td class="prop-label">User Annotations</td>
+                  <td class="prop-content">{{ selectedItem.numberOfAnnotations || 0 }}</td>
+                </tr>
+                <tr>
+                  <td class="prop-label">Description</td>
+                  <td class="prop-content">
+                    <cytomine-description :object="modelInstance" :canEdit="canEdit" />
+                  </td>
+                </tr>
+                <tr v-if="selectedItemType === 'project'">
+                  <td class="prop-label">Tags</td>
+                  <td class="prop-content">
+                    <cytomine-tags :object="modelInstance" :canEdit="canEdit" />
+                  </td>
+                </tr>
+                <tr v-if="selectedItemType === 'project'">
+                  <td class="prop-label">Attached Files</td>
+                  <td class="prop-content">
+                    <attached-files :object="modelInstance" :canEdit="canEdit" />
+                  </td>
+                </tr>
+                <tr>
+                  <td class="prop-label">Created On</td>
+                  <td class="prop-content">
+                    {{ Number(selectedItem.created) | moment('ll') }}
+                  </td>
+                </tr>
+                <tr v-if="selectedItemType === 'project' && representatives.length > 0">
+                  <td class="prop-label">Assigned Users ({{ representatives.length }})</td>
+                  <td class="prop-content">
+                    <list-usernames :users="representatives" :onlines="onlines" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <footer class="modal-card-foot" style="justify-content: flex-end;">
+          <button class="button" @click="showDetailsModal = false">Close</button>
+        </footer>
+      </div>
+    </div>
+
     <!-- Single AI Runner Selection Modal -->
     <SelectAIRunnerModal 
       :active.sync="singleAIRunnerSelectionModal" 
@@ -152,15 +240,24 @@
 </template>
 
 <script>
-import { ImageInstanceCollection, ImageGroupCollection, AIRunner, AIAlgorithmJob } from '@/api';
+import { ImageInstanceCollection, ImageGroupCollection, ImageGroup, Project, AIRunner, AIAlgorithmJob } from '@/api';
+import { get } from '@/utils/store-helpers';
 import ImageCard from '../image/ImageCard.vue';
 import SelectAIRunnerModal from './SelectAIRunnerModal.vue';
+import CytomineDescription from '@/components/description/CytomineDescription';
+import CytomineTags from '@/components/tag/CytomineTags';
+import AttachedFiles from '@/components/attached-file/AttachedFiles';
+import ListUsernames from '@/components/user/ListUsernames';
 
 export default {
   name: 'ProjectContentDisplay',
   components: {
     ImageCard,
-    SelectAIRunnerModal
+    SelectAIRunnerModal,
+    CytomineDescription,
+    CytomineTags,
+    AttachedFiles,
+    ListUsernames
   },
   props: {
     selectedItem: {
@@ -187,8 +284,30 @@ export default {
       imageGroups: [],
       aiRunners: [],
       singleAIRunnerSelectionModal: false,
-      projectToRunAI: null
+      projectToRunAI: null,
+      showDetailsModal: false,
+      detailsLoading: false,
+      representatives: [],
+      onlines: []
     };
+  },
+  computed: {
+    currentUser: get('currentUser/user'),
+    canEdit() {
+      return !this.$keycloak.hasTemporaryToken && this.selectedItem;
+    },
+    // Wrap selectedItem into proper API model instance
+    modelInstance() {
+      if (!this.selectedItem) {
+        return null;
+      }
+      if (this.selectedItemType === 'project') {
+        return new Project(this.selectedItem);
+      } else if (this.selectedItemType === 'imageGroup') {
+        return new ImageGroup(this.selectedItem);
+      }
+      return null;
+    }
   },
   watch: {
     selectedItem: {
@@ -199,6 +318,11 @@ export default {
     },
     revision() {
       this.fetchContent();
+    },
+    showDetailsModal(newVal) {
+      if (newVal && this.selectedItem && this.selectedItemType === 'project') {
+        this.fetchProjectDetails();
+      }
     }
   },
   async created() {
@@ -300,7 +424,25 @@ export default {
         }
       });
     },
-    
+
+    async fetchProjectDetails() {
+      if (this.selectedItemType !== 'project') {
+        return;
+      }
+
+      this.detailsLoading = true;
+      try {
+        // Fetch representatives
+        this.representatives = (await this.selectedItem.fetchRepresentatives()).array;
+        // Fetch online users
+        this.onlines = await this.selectedItem.fetchConnectedUsers();
+      } catch (error) {
+        console.error('Error fetching project details:', error);
+      } finally {
+        this.detailsLoading = false;
+      }
+    },
+
     selectImageGroup(group) {
       this.$emit('select-item', { type: 'imageGroup', item: group });
     }
@@ -500,6 +642,63 @@ export default {
   }
 }
 
+.properties-table {
+  background-color: transparent;
+
+  td {
+    border: 1px solid $dark-border-color;
+    vertical-align: top;
+
+    &.prop-label {
+      background-color: $dark-bg-secondary;
+      color: $dark-text-secondary;
+      font-weight: 600;
+      width: 30%;
+      padding: 0.75rem 1rem;
+    }
+
+    &.prop-content {
+      background-color: $dark-bg-primary;
+      color: $dark-text-primary;
+      padding: 0.75rem 1rem;
+    }
+  }
+}
+
+// Folder Details Modal styling
+.folder-details-modal {
+  z-index: 40; // Standard modal z-index
+
+  .modal-card {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .modal-card-head {
+    background-color: $dark-bg-secondary;
+    border-bottom: 1px solid $dark-border-color;
+
+    .modal-card-title {
+      color: $dark-text-primary;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  }
+
+  .modal-card-body {
+    background-color: $dark-bg-primary;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .modal-card-foot {
+    background-color: $dark-bg-secondary;
+    border-top: 1px solid $dark-border-color;
+  }
+}
+
 @media (max-width: 768px) {
   .content-header {
     flex-direction: column;
@@ -514,6 +713,10 @@ export default {
       flex-wrap: wrap;
       justify-content: flex-start;
     }
+  }
+
+  .folder-details-modal .modal-card {
+    max-width: 95% !important;
   }
 }
 </style>
