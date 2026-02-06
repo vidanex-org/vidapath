@@ -216,6 +216,26 @@ public class ImageServerService {
                    .toList();
     }
 
+    public Map<String, Object> serverInfo() {
+        PreparedRequest request = new PreparedRequest();
+        request.setMethod(HttpMethod.GET);
+        request.setUrl(this.internalImageServerURL());
+        request.addPathFragment("info");
+
+        Map<String, Object> json = JsonObject.toMap(request.toObject(String.class));
+        return StringUtils.keysToCamelCase(json);
+    }
+
+    public Map<String, Object> uiConfig() {
+        PreparedRequest request = new PreparedRequest();
+        request.setMethod(HttpMethod.GET);
+        request.setUrl(this.internalImageServerURL());
+        request.addPathFragment("ui-config");
+
+        Map<String, Object> json = JsonObject.toMap(request.toObject(String.class));
+        return StringUtils.keysToCamelCase(json);
+    }
+
     public ResponseEntity<byte[]> download(UploadedFile uploadedFile, ProxyExchange<byte[]> proxy)
         throws IOException {
         PreparedRequest request = new PreparedRequest();

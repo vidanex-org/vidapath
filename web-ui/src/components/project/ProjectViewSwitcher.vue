@@ -26,6 +26,7 @@
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex';
 import ListProjects from './ListProjects.vue';
 import ProjectManagement from './ProjectManagement.vue';
 
@@ -37,10 +38,39 @@ export default {
   },
   data() {
     return {
-      currentView: 'projectManagement' // Default view changed to projectManagement
+      currentView: 'projectManagement' // Default view, will be updated based on server config
     };
   },
+  computed: {
+    ...mapGetters('serverConfig', [
+      'isFolderBasedEnabled',
+      'isLoaded'
+    ])
+  },
+  async mounted() {
+    await this.initializeView();
+  },
   methods: {
+    ...mapActions('serverConfig', ['fetchServerConfig']),
+
+    async initializeView() {
+      try {
+        // Fetch server config if not already loaded
+        if (!this.isLoaded) {
+          await this.fetchServerConfig();
+        }
+
+        // Set initial view based on server configuration
+        // If folder-based is enabled, show projectManagement (folder view)
+        // Otherwise, show caseManagement (case view)
+        this.currentView = this.isFolderBasedEnabled ? 'projectManagement' : 'caseManagement';
+      } catch (error) {
+        console.error('Failed to initialize view based on server config:', error);
+        // Fallback to default view
+        this.currentView = 'projectManagement';
+      }
+    },
+
     toggleView() {
       this.currentView = this.currentView === 'projectManagement' ? 'caseManagement' : 'projectManagement';
     }

@@ -25,4 +25,18 @@ public class RestImageServerController extends RestCytomineController {
         log.debug("REST request to list allFormats");
         return responseSuccess(imageServerService.formats());
     }
+
+    @GetMapping("/imageserver/info.json")
+    public ResponseEntity<String> serverInfo(
+    ) throws IOException {
+        log.debug("REST request to get server info");
+        return responseSuccess(imageServerService.serverInfo());
+    }
+
+    @GetMapping("/imageserver/ui-config.json")
+    public ResponseEntity<String> uiConfig(
+    ) throws IOException {
+        log.debug("REST request to get UI config");
+        return responseSuccess(imageServerService.uiConfig());
+    }
 }
