@@ -192,10 +192,16 @@
           {{`${image.width} x ${image.height} ${$t('pixels')}`}}
         </td>
       </tr>
-      <tr v-if="isPropDisplayed('magnification')">
+      <tr>
+        <td class="prop-label">Dimensions</td>
+        <td class="prop-content" colspan="3">
+          {{`${image.width} x ${image.height} ${$t('pixels')}`}}
+        </td>
+      </tr>
+      <tr>
         <td class="prop-label">{{$t('magnification')}}</td>
         <td class="prop-content" colspan="3">
-          <template v-if="image.magnification">{{image.magnification}}</template>
+          <template v-if="image.magnification">{{image.magnification}} x</template>
           <template v-else>{{$t('unknown')}}</template>
         </td>
       </tr>
