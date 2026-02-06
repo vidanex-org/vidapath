@@ -29,7 +29,7 @@
         <a 
           @click="toggleProject(project)" 
           @contextmenu.prevent="showContextMenu($event, 'project', project)"
-          :class="{'is-active': !isImageGroupSelected && selectedProject && selectedProject.id === project.id}"
+          :class="{'is-active': selectedItemType === 'project' && selectedItem && selectedItem.id === project.id}"
           class="project-link"
         >
           <span class="icon is-small expand-icon">
@@ -45,7 +45,7 @@
             <a 
               @click="selectImageGroup(imageGroup)" 
               @contextmenu.prevent="showContextMenu($event, 'imageGroup', imageGroup)"
-              :class="{'is-active': selectedImageGroup && selectedImageGroup.id === imageGroup.id}"
+              :class="{'is-active': selectedItemType === 'imageGroup' && selectedItem && selectedItem.id === imageGroup.id}"
               class="image-group-link"
             >
               <span class="icon is-small folder-icon">
@@ -76,18 +76,25 @@ export default {
   components: {
     ContextMenu
   },
+  props: {
+    selectedItem: {
+      type: Object,
+      default: null
+    },
+    selectedItemType: {
+      type: String,
+      default: null
+    }
+  },
   data() {
     return {
       projects: [],
-      selectedProject: null,
-      selectedImageGroup: null,
       contextMenuItems: [],
       contextMenuItem: null,
       contextMenuType: null,
       all: true,
       revision: 0,
-      imageGroupProjectMap: {},
-      isImageGroupSelected: false
+      imageGroupProjectMap: {}
     };
   },
   watch: {
@@ -101,7 +108,7 @@ export default {
         const projectCollection = new ProjectCollection({ all: this.all });
         const fetchedProjects = await projectCollection.fetchAll();
         this.projects = fetchedProjects.array.map(p => ({ ...p, imageGroups: [], isExpanded: false }));
-        
+
         let imageGroupProjectMap = {};
         for (const project of this.projects) {
           const imageGroupCollection = new ImageGroupCollection({
@@ -115,10 +122,10 @@ export default {
           });
         }
         this.imageGroupProjectMap = imageGroupProjectMap;
-        
-        // 自动选择第一个项目（如果存在且当前没有选中的项目）
-        if (this.projects.length > 0 && !this.selectedProject && !this.selectedImageGroup) {
-          this.selectProject(this.projects[0]);
+
+        // Auto-select the first project if nothing is selected yet
+        if (this.projects.length > 0 && !this.selectedItem) {
+          this.$emit('select-item', { type: 'project', item: this.projects[0] });
         }
       } catch (error) {
         console.error('Error fetching projects or image groups:', error);
@@ -126,18 +133,10 @@ export default {
     },
     toggleProject(project) {
       project.isExpanded = !project.isExpanded;
-      this.selectProject(project);
-    },
-    selectProject(project) {
-      this.selectedProject = project;
-      this.selectedImageGroup = null;
       this.$emit('select-item', { type: 'project', item: project });
-      this.isImageGroupSelected = false;
     },
     selectImageGroup(imageGroup) {
-      this.selectedImageGroup = imageGroup;
       this.$emit('select-item', { type: 'imageGroup', item: imageGroup });
-      this.isImageGroupSelected = true;
     },
     showContextMenu(event, type, item) {
       this.contextMenuItem = item;

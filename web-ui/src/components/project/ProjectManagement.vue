@@ -8,6 +8,8 @@
         <div class="file-tree-content">
           <ProjectTree 
             ref="projectTree" 
+            :selected-item="selectedItem"
+            :selected-item-type="selectedItemType"
             @select-item="handleItemSelected" 
             @add-subfolder="openAddImageGroupModal" 
             @rename-item="openRenameModal" 
@@ -19,6 +21,7 @@
           :selected-item="selectedItem" 
           :selected-item-type="selectedItemType" 
           :selected-project="selectedProject" 
+          @select-item="handleItemSelected"
           @add-subfolder="openAddImageGroupModal" 
           @add-image="openAddImageModal" 
           @share="openShareModal" 
