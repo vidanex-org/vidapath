@@ -60,9 +60,9 @@ export default {
   }
   
   .view-toggle-switch {
-    position: absolute;
-    top: 20px;
-    right: 20px;
+    position: fixed;
+    bottom: 10px;
+    left: 20px;
     z-index: 100;
     
     .toggle-button {

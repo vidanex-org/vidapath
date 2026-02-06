@@ -368,21 +368,4 @@ export default {
     }
   }
 }
-
-// Scrollbar styling
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: $dark-scrollbar-thumb;
-  border-radius: 3px;
-  &:hover {
-    background: $dark-scrollbar-thumb-hover;
-  }
-}
 </style>

@@ -312,8 +312,6 @@ export default {
 @import '@/assets/styles/dark-variables.scss';
 
 .project-content-display {
-  height: 100%;
-  padding: 1.5rem;
   
   .empty-selection-state {
     display: flex;
@@ -341,7 +339,6 @@ export default {
   }
   
   .content-wrapper {
-    height: 100%;
     
     .content-header {
       display: flex;
@@ -499,6 +496,23 @@ export default {
           opacity: 0.7;
         }
       }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .content-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .content-actions {
+    margin-top: 1rem;
+    width: 100%;
+
+    .field.is-grouped {
+      flex-wrap: wrap;
+      justify-content: flex-start;
     }
   }
 }

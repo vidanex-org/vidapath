@@ -279,11 +279,6 @@ export default {
   margin-bottom: 1rem;
 }
 
-.radio-spacing {
-  margin-right: 1.5rem;
-  margin-left: 1.5rem;
-}
-
 .field-label {
   font-weight: 600;
   color: $dark-text-primary;

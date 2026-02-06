@@ -1,15 +1,9 @@
 <template>
   <div class="project-management-container">
-    <div class="panel-heading">
-      <div class="panel-heading-content">
-        <strong class="panel-heading-title">Folder View</strong>
-        <div class="panel-heading-subtitle">Manage your projects and organize content efficiently</div>
-      </div>
-    </div>
-    <div class="columns is-gapless is-fullheight project-content-area">
+    <div class="columns is-gapless project-content-area">
       <div class="column is-one-quarter file-tree-column">
         <div class="file-tree-header">
-          <h2 class="title is-5">Project Tree</h2>
+          <h2 class="title is-5">Folder Tree</h2>
         </div>
         <div class="file-tree-content">
           <ProjectTree 
@@ -171,69 +165,21 @@ export default {
 @import '@/assets/styles/dark-variables.scss';
 
 .project-management-container {
-  height: calc(100vh - 100px);
+  height: 100%;
   display: flex;
   flex-direction: column;
   background-color: $dark-bg-primary;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
   margin: 0 1rem;
+  /* Removed height and overflow for global scroll */
 }
 
-.panel-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 2rem;
-  background: linear-gradient(135deg, $dark-bg-secondary 0%, $dark-bg-tertiary 100%);
-  border-bottom: 1px solid $dark-border-color;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
-  .panel-heading-content {
-    display: flex;
-    flex-direction: column;
-    
-    .panel-heading-title {
-      font-size: 1.5em;
-      color: $dark-text-primary;
-      font-weight: 700;
-      margin-bottom: 0.25rem;
-    }
-    
-    .panel-heading-subtitle {
-      font-size: 0.9em;
-      color: $dark-text-secondary;
-      opacity: 0.8;
-    }
-  }
-
-  .panel-heading-actions {
-    display: flex;
-    gap: 0.75rem;
-    
-    .button {
-      border-radius: 6px;
-      transition: all 0.2s ease;
-      
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      }
-      
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-      }
-    }
-  }
-}
 
 .project-content-area {
   flex-grow: 1;
   margin: 0;
-  height: 100%;
   
   .file-tree-column {
     background-color: $dark-bg-secondary;
@@ -256,52 +202,42 @@ export default {
         margin: 0;
         font-weight: 600;
       }
-
-      .tree-filter {
-        .button {
-          border-radius: 4px;
-          padding: 0.25rem 0.75rem;
-          font-size: 0.85em;
-          
-          &.is-primary {
-            background-color: $primary;
-            border-color: $primary;
-            color: $dark-bg-primary;
-          }
-        }
-      }
     }
 
     .file-tree-content {
       flex-grow: 1;
-      overflow-y: auto;
       padding: 0 1.5rem 1.5rem;
+
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: $dark-scrollbar-thumb;
+        border-radius: 3px;
+        &:hover {
+          background: $dark-scrollbar-thumb-hover;
+        }
+      }
     }
   }
 
   .content-display-column {
     background-color: $dark-bg-primary;
-    overflow-y: auto;
-    padding: 0;
+    padding: 1.5rem;
+    flex-grow: 1;
   }
 }
 
-// Scrollbar styling
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: $dark-scrollbar-track;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: $dark-scrollbar-thumb;
-  border-radius: 4px;
-  &:hover {
-    background: $dark-scrollbar-thumb-hover;
+@media (max-width: 768px) {
+  .file-tree-column {
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid $dark-border-color;
   }
 }
 </style>

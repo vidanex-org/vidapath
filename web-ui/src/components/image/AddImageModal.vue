@@ -224,141 +224,18 @@ export default {
 <style scoped lang="scss">
 @import "../../assets/styles/dark-variables.scss";
 
->>> .animation-content {
+::v-deep .animation-content {
   max-width: 60% !important;
   width: 60%;
 }
 
->>> .modal-card {
+::v-deep .modal-card {
   width: 100%;
   height: 80vh;
-  background-color: $dark-bg-primary;
 }
 
->>> .modal-card-title {
-  color: $dark-text-primary;
-  background-color: $dark-bg-secondary;
-  border-color: $dark-border-color;
-}
-
->>> .modal-card-body {
-  background-color: $dark-bg-primary;
-  color: $dark-text-primary;
-}
-
->>> .modal-card-foot {
-  background-color: $dark-bg-secondary;
-  border-color: $dark-border-color;
-}
-
->>> .image-thumbnail {
+::v-deep .image-thumbnail {
   max-height: 4rem;
   max-width: 10rem;
 }
-
-/* 暗黑模式下的表格样式 */
->>> .table {
-  background-color: $dark-bg-primary;
-  color: $dark-text-primary;
-}
-
->>> .table tr {
-  background-color: $dark-bg-primary;
-  color: $dark-text-primary;
-}
-
->>> .table tr:hover {
-  background-color: $dark-bg-hover;
-}
-
->>> .table th {
-  background-color: $dark-bg-secondary;
-  color: $dark-text-primary;
-  border-color: $dark-border-color;
-}
-
->>> .table td {
-  color: $dark-text-primary;
-  border-color: $dark-border-color;
-}
-
-/* 暗黑模式下的输入框 */
->>> .input {
-  background-color: $dark-input-bg;
-  color: $dark-text-primary;
-  border-color: $dark-input-border;
-}
-
->>> .input::placeholder {
-  color: $dark-text-disabled;
-}
-
->>> .input:focus {
-  border-color: $dark-input-focus-border;
-  box-shadow: 0 0 0 0.2rem $dark-input-focus-shadow;
-}
-
-/* 暗黑模式下的按钮 */
->>> .button {
-  background-color: $dark-button-bg;
-  color: $dark-text-primary;
-  border-color: $dark-button-border;
-}
-
->>> .button:hover {
-  background-color: $dark-button-hover-bg;
-  border-color: $dark-button-hover-border;
-}
-
->>> .button.is-link {
-  background-color: $dark-button-bg;
-  color: $dark-text-primary;
-  border-color: $dark-button-border;
-}
-
->>> .button.is-link:hover {
-  background-color: $dark-button-hover-bg;
-  border-color: $dark-button-hover-border;
-}
-
->>> .button.is-small {
-  background-color: $dark-button-bg;
-  color: $dark-text-primary;
-  border-color: $dark-button-border;
-}
-
->>> .button.is-small:hover {
-  background-color: $dark-button-hover-bg;
-  border-color: $dark-button-hover-border;
-}
-
-/* 暗黑模式下的分页控件 */
->>> .pagination {
-  background-color: $dark-bg-secondary;
-  color: $dark-text-primary;
-}
-
->>> .pagination .button {
-  background-color: $dark-button-bg;
-  color: $dark-text-primary;
-  border-color: $dark-button-border;
-}
-
->>> .pagination .button:hover {
-  background-color: $dark-button-hover-bg;
-  border-color: $dark-button-hover-border;
-}
-
->>> .pagination .button[disabled] {
-  background-color: $dark-bg-tertiary;
-  color: $dark-text-disabled;
-  border-color: $dark-border-color;
-}
-
-/* 暗黑模式下的加载动画 */
->>> .loading {
-  background-color: rgba(30, 30, 30, 0.7);
-  color: $dark-text-primary;
-}
-
 </style>
