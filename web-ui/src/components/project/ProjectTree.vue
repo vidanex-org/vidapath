@@ -176,7 +176,18 @@ export default {
       this.$emit('select-item', { type: 'project', item: project });
     },
     selectImageGroup(imageGroup) {
+      const projectId = this.imageGroupProjectMap[imageGroup.id];
+      const project = this.projects.find(p => p.id === projectId);
+      if (project) {
+        project.isExpanded = true;
+      }
       this.$emit('select-item', { type: 'imageGroup', item: imageGroup });
+    },
+    expandProject(projectToExpand) {
+      const project = this.projects.find(p => p.id === projectToExpand.id);
+      if (project) {
+        project.isExpanded = true;
+      }
     },
     showContextMenu(event, type, item) {
       this.contextMenuItem = item;
@@ -231,6 +242,7 @@ export default {
       const proj = this.projects.find(p => p.id === project.id);
       if (proj) {
         proj.imageGroups.push(imageGroup);
+        this.imageGroupProjectMap[imageGroup.id] = project.id;
       }
     },
     getFilteredImageGroups(imageGroups) {

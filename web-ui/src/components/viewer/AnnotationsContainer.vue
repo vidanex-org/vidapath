@@ -187,7 +187,7 @@ export default {
   opacity: 0.95;
   border-radius: 1%;
   box-sizing: border-box; // 添加box-sizing以确保padding和border包含在元素的总宽高内
-  z-index: 10; // 确保组件在其他元素之上
+  z-index: 100; // 确保组件在其他元素之上
 }
 
 /* Deep-scoped selectors for child components can be added here if needed */

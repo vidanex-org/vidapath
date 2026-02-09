@@ -83,6 +83,9 @@ export default {
       }
       else if (payload.type === 'imageGroup') {
         this.selectedProject = this.findProjectForImageGroup(payload.item);
+        if (this.selectedProject) {
+          this.$refs.projectTree.expandProject(this.selectedProject);
+        }
       }
       console.log('Selected Item:', this.selectedItemType, this.selectedItem, 'in project', this.selectedProject);
     },

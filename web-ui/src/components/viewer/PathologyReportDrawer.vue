@@ -1,6 +1,5 @@
 <template>
   <div class="pathology-report-drawer" :class="{ 'is-active': active }">
-    <div class="drawer-background"></div>
     <div class="drawer-content">
       <div class="drawer-header">
         <h2 class="title is-4">Histopathological Examination Report</h2>
@@ -91,6 +90,7 @@ export default {
 @import '../../assets/styles/dark-variables';
 
 .pathology-report-drawer {
+  pointer-events: none;
   position: fixed;
   top: 0;
   left: 0;
@@ -105,16 +105,10 @@ export default {
   display: flex;
 }
 
-.drawer-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-}
+
 
 .drawer-content {
+  pointer-events: auto;
   position: fixed;
   top: 0;
   right: 0;
