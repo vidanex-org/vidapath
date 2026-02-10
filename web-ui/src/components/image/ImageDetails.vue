@@ -382,7 +382,7 @@ export default {
       return this.editable && this.$store.getters['currentProject/canEditImage'](this.image);
     },
     canAddToImageGroup() {
-      return !this.currentUser.guestByNow && (this.canManageProject || !this.project.isReadOnly);
+      return !this.currentUser.guestByNow && this.canManageProject;
     },
     imageNameNotif() {
       return this.blindMode ? this.image.blindedName : this.image.instanceFilename;

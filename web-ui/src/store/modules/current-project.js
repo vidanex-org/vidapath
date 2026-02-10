@@ -153,7 +153,7 @@ export default {
       let currentUser = rootState.currentUser.user;
       let project = state.project;
       return getters.canManageProject ||
-        (!currentUser.guestByNow && !project.isReadOnly && (image.user === currentUser.id || !project.isRestricted));
+        (!currentUser.guestByNow && (image.user === currentUser.id || !project.isRestricted));
     },
 
     canManageProject: (state, _, rootState) => { // true iff current user is admin or project manager

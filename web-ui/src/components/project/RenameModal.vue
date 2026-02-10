@@ -59,8 +59,13 @@ export default {
         this.isRenaming = false;
         this.$nextTick(() => {
           if (this.$refs.nameInput) {
+            // Focus the input
             this.$refs.nameInput.focus();
-            this.$refs.nameInput.select();
+            // Select all text in the input by accessing the underlying DOM element
+            const inputElement = this.$refs.nameInput.$el.querySelector('input');
+            if (inputElement) {
+              inputElement.select();
+            }
           }
         });
       }

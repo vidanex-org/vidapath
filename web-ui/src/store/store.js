@@ -23,6 +23,7 @@ import currentProject from './modules/current-project.js';
 import ontologies from './modules/ontologies.js';
 import listProjects from './modules/list-projects.js';
 import serverConfig from './modules/server-config.js';
+import projectTree from './project-tree.js';
 
 Vue.use(Vuex);
 let store = new Vuex.Store({
@@ -34,7 +35,11 @@ let store = new Vuex.Store({
       commit('ontologies/resetState');
       commit('listProjects/resetState');
       commit('serverConfig/resetState');
-      for (let key in state.projects) {
+      commit('project-tree/SET_PROJECTS', []);
+      commit('project-tree/SET_IMAGE_GROUP_PROJECT_MAP', {});
+      commit('project-tree/SET_SELECTED_ITEM', { item: null, type: null });
+      commit('project-tree/SET_SELECTED_PROJECT', null);
+      for ( let key in state.projects) {
         this.unregisterModule(['projects', key]);
       }
     }
@@ -46,6 +51,7 @@ let store = new Vuex.Store({
     ontologies,
     listProjects,
     serverConfig,
+    'project-tree': projectTree,
     projects: {
       namespaced: true
     }

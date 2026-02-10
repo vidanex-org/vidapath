@@ -164,15 +164,12 @@ export default {
         let propsTranslation = {imageName: image.originalFilename, projectName: this.project.name};
         try {
           let newImage = await new ImageInstance({baseImage: image.id, project: this.project.id}).save();
-          this.idsAddedImages.push(image.id);
           this.$emit('addImage', newImage);
           this.$notify({
             type: 'success',
             text: this.$t('notif-success-add-image', propsTranslation)
           });
-          let updatedProject = this.project.clone();
-          updatedProject.numberOfImages++;
-          this.$store.dispatch('currentProject/updateProject', updatedProject);
+          this.idsAddedImages.push(image.id);
         } catch (error) {
           console.log(error);
           this.$notify({
@@ -180,6 +177,9 @@ export default {
             text: this.$t('notif-error-add-image', propsTranslation)
           });
         }
+        let updatedProject = this.project.clone();
+        updatedProject.numberOfImages++;
+        this.$store.dispatch('currentProject/updateProject', updatedProject);
       }
       else { // imageGroup context
         try {
