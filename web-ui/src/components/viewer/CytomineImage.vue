@@ -819,8 +819,8 @@ $colorOpenedPanelLink: $primary;
 
 .ai-analysis-panel {
   position: absolute;
-  top: 60px;
-  left: 60px;
+  top: 75px;
+  left: 45px;
   z-index: 100;
   // background: rgba(255, 255, 255, 0.95);
   border-radius: 8px;

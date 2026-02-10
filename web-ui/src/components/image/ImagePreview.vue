@@ -20,7 +20,18 @@
     </router-link>
     <div class="card-content">
       <div class="content image-info">
-        <div class="image-name">{{ image.instanceFilename || image.imageName }}</div>
+        <div class="image-header">
+          <div class="image-name">{{ image.instanceFilename || image.imageName }}</div>
+          <button
+            class="info-button"
+            @click.prevent="$emit('show-details')"
+            title="View details"
+          >
+            <span class="icon is-small">
+              <i class="fas fa-info-circle"></i>
+            </span>
+          </button>
+        </div>
         <div class="image-details">
           <div class="info-item" v-if="tissue">
             <span class="info-label">Tissue:</span>
@@ -126,12 +137,47 @@ export default {
   font-size: 0.9rem;
 }
 
+.image-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+  gap: 0.5rem;
+}
+
 .image-name {
   font-weight: bold;
-  margin-bottom: 5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+}
+
+.info-button {
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: $primary;
+    border-color: $primary;
+    color: white;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  .icon {
+    font-size: 0.9rem;
+  }
 }
 
 .image-details {

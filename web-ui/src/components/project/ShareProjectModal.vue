@@ -49,9 +49,9 @@
 
     <template #footer>
       <button class="button" @click="$emit('update:active', false)">
-        Close
+        Cancel
       </button>
-      <button class="button is-link" @click="shareProject" :disabled="loading">
+      <button class="button is-primary" @click="shareProject" :disabled="loading">
         Share
       </button>
     </template>
@@ -277,11 +277,6 @@ export default {
 
 .field-spacing {
   margin-bottom: 1rem;
-}
-
-.radio-spacing {
-  margin-right: 1.5rem;
-  margin-left: 1.5rem;
 }
 
 .field-label {

@@ -192,10 +192,16 @@
           {{`${image.width} x ${image.height} ${$t('pixels')}`}}
         </td>
       </tr>
-      <tr v-if="isPropDisplayed('magnification')">
+      <tr>
+        <td class="prop-label">Dimensions</td>
+        <td class="prop-content" colspan="3">
+          {{`${image.width} x ${image.height} ${$t('pixels')}`}}
+        </td>
+      </tr>
+      <tr>
         <td class="prop-label">{{$t('magnification')}}</td>
         <td class="prop-content" colspan="3">
-          <template v-if="image.magnification">{{image.magnification}}</template>
+          <template v-if="image.magnification">{{image.magnification}} x</template>
           <template v-else>{{$t('unknown')}}</template>
         </td>
       </tr>
@@ -334,7 +340,11 @@ export default {
   props: {
     image: {type: Object},
     excludedProperties: {type: Array, default: () => []},
-    editable: {type: Boolean, default: false}
+    editable: {type: Boolean, default: false},
+    context: {
+      type: String,
+      default: 'project'
+    }
   },
   data() {
     return {
@@ -433,9 +443,18 @@ export default {
     },
 
     confirmDeletion() {
+      let title, message;
+      if (this.context === 'imageGroup') {
+        title = 'Remove image from the sub-folder?';
+        message = 'Are you sure you want to remove this image from the sub-folder?';
+      } else {
+        title = 'Delete image';
+        message = 'Are you sure you want to delete this image, this action cannot be undone?';
+      }
+
       this.$buefy.dialog.confirm({
-        title: this.$t('delete-image'),
-        message: this.$t('delete-image-confirmation-message', {imageName: this.imageNameNotif}),
+        title: title,
+        message: message,
         type: 'is-danger',
         confirmText: this.$t('button-confirm'),
         cancelText: this.$t('button-cancel'),
@@ -444,16 +463,41 @@ export default {
     },
     async deleteImage() {
       try {
-        await ImageInstance.delete(this.image.id);
-        this.$notify({
-          type: 'success',
-          text: this.$t('notif-success-image-deletion', {imageName: this.imageNameNotif})
-        });
-        this.$emit('delete');
+        if (this.context === 'imageGroup') {
+          // Unlink from image group
+          if (this.imageGroupLinks.length > 0) {
+            await this.imageGroupLinks[0].delete();
+            this.$notify({
+              type: 'success',
+              text: 'Removed image from this folder.'
+            });
+            this.$emit('delete');
+          } else {
+            console.log("Image not in a group, cannot unlink.");
+            this.$notify({ type: 'error', text: 'Failed to remove image from the sub-folder' });
+          }
+        } else { // context === 'project'
+          // Hard delete
+          if (this.imageGroupLinks.length > 0) {
+            for (const link of this.imageGroupLinks) {
+              await link.delete();
+            }
+            this.$notify({
+              type: 'success',
+              text: 'Successfully removed image from all the sub-folder.'
+            });
+          }
+          await ImageInstance.delete(this.image.id);
+          this.$notify({
+            type: 'success',
+            text: 'Successfully deleted image.'
+          });
+          this.$emit('delete');
 
-        let updatedProject = this.project.clone();
-        updatedProject.numberOfImages--;
-        this.$store.dispatch('currentProject/updateProject', updatedProject);
+          let updatedProject = this.project.clone();
+          updatedProject.numberOfImages--;
+          this.$store.dispatch('currentProject/updateProject', updatedProject);
+        }
       } catch (err) {
         console.log(err);
         this.$notify({

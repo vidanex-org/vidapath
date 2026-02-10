@@ -1,22 +1,11 @@
-<!-- Copyright (c) 2009-2022. Authors: see NOTICE file.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.-->
-
 <template>
 <div class="modal-card">
   <header class="modal-card-head">
     <p class="modal-card-title">{{title}}</p>
-    <slot name="controls"></slot>
+    <slot name="controls">
+      <!-- 默认关闭按钮 -->
+      <button class="delete" aria-label="close" @click="$emit('close')"></button>
+    </slot>
   </header>
   <section class="modal-card-body">
     <slot></slot>
@@ -57,12 +46,16 @@ export default {
   color: $dark-text-primary;
   border-bottom: 1px solid $dark-border-color;
   padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .modal-card-title {
   color: $dark-text-primary;
   font-size: 1.25rem;
   font-weight: 600;
+  margin: 0;
 }
 
 .modal-card-body {
@@ -99,5 +92,52 @@ export default {
 .button:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+/* Delete button styles for dark theme */
+.delete {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+  flex-shrink: 0;
+  height: 20px;
+  position: relative;
+  vertical-align: top;
+  width: 20px;
+}
+
+.delete::before,
+.delete::after {
+  background-color: $dark-text-primary;
+  content: "";
+  display: block;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translateX(-50%) translateY(-50%) rotate(45deg);
+  transform-origin: center center;
+}
+
+.delete::before {
+  height: 2px;
+  width: 50%;
+}
+
+.delete::after {
+  height: 50%;
+  width: 2px;
+}
+
+.delete:hover::before,
+.delete:hover::after {
+  background-color: $dark-text-secondary;
+}
+
+.delete:focus {
+  outline: none;
 }
 </style>

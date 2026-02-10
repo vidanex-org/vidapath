@@ -66,6 +66,11 @@ class ReadableSettings(BaseSettings):
     auto_delete_collection_archive: bool = True
     auto_delete_failed_upload: bool = True
 
+    # Easy Import Project Name Parsing Configuration
+    easy_import_enable_folder_based: bool = True
+    easy_import_project_name_length: int = 12
+    easy_import_project_name_offset: int = 0
+
 
 class Settings(ReadableSettings):
     model_config = SettingsConfigDict(env_file="pims-config.env", env_file_encoding="utf-8")
@@ -81,11 +86,7 @@ class Settings(ReadableSettings):
     enable_auto_import_scan: bool = False
     auto_import_scan_interval: int = 60
     auto_import_target_storage_username: str = "admin"
-    
-    # Easy Import Project Name Parsing Configuration
-    easy_import_project_name_length: int = 12
-    easy_import_project_name_offset: int = 0
-    
+
     # Redis Keys Configuration
     import_lock_key: str = "pims:import_lock"
     processed_files_cache_key: str = "pims:imported_files"

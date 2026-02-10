@@ -53,7 +53,7 @@ class FileImportCache:
 
 
 def iter_importable_files(
-    dataset_root: Path, name_offset: int, name_length: int
+    dataset_root: Path, name_offset: int, name_length: int, easy_import_enable_folder_based: bool = True
 ) -> Generator[Tuple[Path, Path, str], None, None]:
     """
     Iterate over importable files in the dataset directory.
@@ -83,12 +83,15 @@ def iter_importable_files(
                 if file.startswith('.'):
                     continue
 
-                stem = file_path.stem
-                if len(stem) < min_required_len:
-                    logger.debug(f"Skipping '{file_path}' - name too short (Required: {min_required_len}, Actual: {len(stem)}).")
-                    continue
-
-                project_name = stem[name_offset : name_offset + name_length]
+                if easy_import_enable_folder_based:
+                    project_name = file_path.parent.name
+                else:
+                    stem = file_path.stem
+                    if len(stem) < min_required_len:
+                        logger.debug(f"Skipping '{file_path}' - name too short (Required: {min_required_len}, Actual: {len(stem)}).")
+                        continue
+                    project_name = stem[name_offset : name_offset + name_length]
+                
                 yield bucket, file_path, project_name
 
 

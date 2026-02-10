@@ -14,7 +14,14 @@
 
 
 <template>
-<b-modal :active="active" @close="close()" has-modal-card>
+<b-modal 
+  :active="active" 
+  @close="close()" 
+  has-modal-card 
+  :can-cancel="['escape', 'outside']"
+  :append-to-body="appendToBody"
+  v-bind="$attrs"
+>
   <cytomine-modal-card :title="title" @close="close()">
     <slot></slot>
     <template #footer>
@@ -29,9 +36,14 @@ import CytomineModalCard from './CytomineModalCard';
 
 export default {
   name: 'cytomine-modal',
+  inheritAttrs: false,
   props: {
     active: Boolean,
-    title: String
+    title: String,
+    appendToBody: {
+      type: Boolean,
+      default: true
+    }
   },
   components: {CytomineModalCard},
   methods: {

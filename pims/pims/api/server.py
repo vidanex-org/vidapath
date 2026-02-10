@@ -12,9 +12,28 @@ class ServerInfo(BaseModel):
     settings: ReadableSettings
 
 
+class UIConfig(BaseModel):
+    """UI configuration exposed to frontend."""
+    easy_import_enable_folder_based: bool = Field(
+        ...,
+        description="Whether folder-based UI mode is enabled for easy import"
+    )
+
+
 @router.get("/info", tags=["Server"])
 async def show_status() -> ServerInfo:
     """
     PIMS Server status.
     """
     return ServerInfo(version=__version__, settings=get_settings())
+
+
+@router.get("/ui-config", tags=["Server"])
+async def get_ui_config() -> UIConfig:
+    """
+    Get UI configuration for frontend.
+    """
+    settings = get_settings()
+    return UIConfig(
+        easy_import_enable_folder_based=settings.easy_import_enable_folder_based
+    )

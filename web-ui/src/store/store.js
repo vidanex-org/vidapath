@@ -22,6 +22,7 @@ import currentUser from './modules/current-user.js';
 import currentProject from './modules/current-project.js';
 import ontologies from './modules/ontologies.js';
 import listProjects from './modules/list-projects.js';
+import serverConfig from './modules/server-config.js';
 
 Vue.use(Vuex);
 let store = new Vuex.Store({
@@ -32,6 +33,7 @@ let store = new Vuex.Store({
       commit('currentProject/resetState');
       commit('ontologies/resetState');
       commit('listProjects/resetState');
+      commit('serverConfig/resetState');
       for (let key in state.projects) {
         this.unregisterModule(['projects', key]);
       }
@@ -43,6 +45,7 @@ let store = new Vuex.Store({
     currentProject,
     ontologies,
     listProjects,
+    serverConfig,
     projects: {
       namespaced: true
     }

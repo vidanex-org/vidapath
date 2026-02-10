@@ -26,15 +26,16 @@ import AdminPanel from './components/admin/AdminPanel.vue';
 import UserActivity from './components/user/UserActivity.vue';
 import PageNotFound from './components/PageNotFound.vue';
 import AIRunnerManagement from './components/airunner/AIRunnerManagement.vue';
+import ProjectViewSwitcher from './components/project/ProjectViewSwitcher.vue'; // Import the new component
 
 const routes = [
   {
     path: '/',
-    component: ListProjects,
+    component: ProjectViewSwitcher, // Use the switcher
   },
   {
     path: '/projects',
-    component: ListProjects,
+    component: ProjectViewSwitcher, // Use the switcher
   },
   {
     path: '/storage',
