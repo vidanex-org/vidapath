@@ -130,14 +130,14 @@
         </div>
         
         <div class="columns is-multiline images-grid">
-          <ImageCard 
-            v-for="image in images" 
-            :key="`image-${image.id}`" 
-            :image="image" 
-            :project="selectedProject" 
-            :context="selectedItemType"
-          />
-        </div>
+                    <ImageCard
+                      v-for="(image, index) in images"
+                      :key="`image-${image.id}`"
+                      :image="image"
+                      :project="selectedProject"
+                      :context="selectedItemType"
+                      @delete="handleImageDelete(index)"
+                    />        </div>
 
         <div 
           v-if="!loading && images.length === 0 && imageGroups.length === 0" 
@@ -445,6 +445,10 @@ export default {
 
     selectImageGroup(group) {
       this.$emit('select-item', { type: 'imageGroup', item: group });
+    },
+
+    handleImageDelete(index) {
+      this.images.splice(index, 1);
     }
   }
 };

@@ -112,6 +112,7 @@ export default {
         });
         await newImageGroup.save();
         this.$refs.projectTree.addImageGroup(this.projectForNewImageGroup, newImageGroup);
+        this.revision++;
       } catch (error) {
         console.error('Error creating image group:', error);
       } finally {

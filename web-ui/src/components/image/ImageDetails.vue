@@ -445,11 +445,11 @@ export default {
     confirmDeletion() {
       let title, message;
       if (this.context === 'imageGroup') {
-        title = this.$t('remove-image-from-group');
-        message = this.$t('remove-image-from-group-confirmation-message', {imageName: this.imageNameNotif});
+        title = 'Remove image from the sub-folder?';
+        message = 'Are you sure you want to remove this image from the sub-folder?';
       } else {
-        title = this.$t('delete-image');
-        message = this.$t('delete-image-confirmation-message', {imageName: this.imageNameNotif});
+        title = 'Delete image';
+        message = 'Are you sure you want to delete this image, this action cannot be undone?';
       }
 
       this.$buefy.dialog.confirm({
@@ -469,19 +469,28 @@ export default {
             await this.imageGroupLinks[0].delete();
             this.$notify({
               type: 'success',
-              text: this.$t('notif-success-image-unlink', {imageName: this.imageNameNotif})
+              text: 'Removed image from this folder.'
             });
             this.$emit('delete');
           } else {
             console.log("Image not in a group, cannot unlink.");
-            this.$notify({ type: 'error', text: this.$t('notif-error-image-unlink-no-group') });
+            this.$notify({ type: 'error', text: 'Failed to remove image from the sub-folder' });
           }
         } else { // context === 'project'
           // Hard delete
+          if (this.imageGroupLinks.length > 0) {
+            for (const link of this.imageGroupLinks) {
+              await link.delete();
+            }
+            this.$notify({
+              type: 'success',
+              text: 'Successfully removed image from all the sub-folder.'
+            });
+          }
           await ImageInstance.delete(this.image.id);
           this.$notify({
             type: 'success',
-            text: this.$t('notif-success-image-deletion', {imageName: this.imageNameNotif})
+            text: 'Successfully deleted image.'
           });
           this.$emit('delete');
 

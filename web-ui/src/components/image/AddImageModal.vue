@@ -46,7 +46,7 @@
               {{$t('button-added')}}
             </button>
             <button v-else-if="isInGroupOrProject(image)" class="button is-small is-link" disabled>
-              {{ context === 'project' ? $t('already-in-project') : $t('already-in-group') }}
+              {{ context === 'project' ? 'Already in' : 'Added' }}
             </button>
             <button v-else class="button is-small is-link" @click="addImage(image)">
               {{$t('button-add')}}

@@ -278,6 +278,14 @@ export default {
           }
         }
       });
+    },
+    addImageGroup(project, newImageGroup) {
+      const proj = this.projects.find(p => p.id === project.id);
+      if (proj) {
+        proj.imageGroups.push(newImageGroup);
+        // Ensure the project is expanded to show the new sub-folder
+        proj.isExpanded = true;
+      }
     }
   },
   created() {
