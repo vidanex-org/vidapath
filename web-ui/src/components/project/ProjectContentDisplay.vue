@@ -4,8 +4,7 @@
       <div class="empty-icon">
         <i class="fas fa-folder-tree"></i>
       </div>
-      <h3 class="title is-4 empty-title">Select a project or folder</h3>
-      <p class="subtitle is-6 empty-subtitle">Choose an item from the project tree to view and manage its content.</p>
+      <p class="subtitle is-6 empty-subtitle">Choose an item from the folder tree to view and manage its content.</p>
     </div>
     <div v-else class="content-wrapper">
       <div class="content-header">
@@ -136,6 +135,7 @@
             :key="`image-${image.id}`" 
             :image="image" 
             :project="selectedProject" 
+            :context="selectedItemType"
           />
         </div>
 

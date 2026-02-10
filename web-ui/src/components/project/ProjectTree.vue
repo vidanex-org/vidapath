@@ -145,22 +145,35 @@ export default {
   methods: {
     async fetchProjects() {
       try {
-        const projectCollection = new ProjectCollection({ all: this.all });
-        const fetchedProjects = await projectCollection.fetchAll();
-        this.projects = fetchedProjects.array.map(p => ({ ...p, imageGroups: [], isExpanded: false }));
+        const expandedProjectIds = this.projects
+          .filter(p => p.isExpanded)
+          .map(p => p.id);
 
+        const projectCollection = new ProjectCollection({ all: this.all });
+        const initialProjects = (await projectCollection.fetchAll()).array;
+
+        let newProjects = [];
         let imageGroupProjectMap = {};
-        for (const project of this.projects) {
+
+        for (const p of initialProjects) {
           const imageGroupCollection = new ImageGroupCollection({
             filterKey: 'project',
-            filterValue: project.id
+            filterValue: p.id
           });
-          const fetchedImageGroups = await imageGroupCollection.fetchAll();
-          project.imageGroups = fetchedImageGroups.array;
-          project.imageGroups.forEach(ig => {
-            imageGroupProjectMap[ig.id] = project.id;
+          const fetchedImageGroups = (await imageGroupCollection.fetchAll()).array;
+          
+          fetchedImageGroups.forEach(ig => {
+            imageGroupProjectMap[ig.id] = p.id;
+          });
+          
+          newProjects.push({
+            ...p,
+            imageGroups: fetchedImageGroups,
+            isExpanded: expandedProjectIds.includes(p.id)
           });
         }
+
+        this.projects = newProjects;
         this.imageGroupProjectMap = imageGroupProjectMap;
 
         // Auto-select the first project if nothing is selected yet
@@ -236,13 +249,6 @@ export default {
       }
       else if (item.action === 'delete') {
         this.deleteItem(this.contextMenuItem);
-      }
-    },
-    addImageGroup(project, imageGroup) {
-      const proj = this.projects.find(p => p.id === project.id);
-      if (proj) {
-        proj.imageGroups.push(imageGroup);
-        this.imageGroupProjectMap[imageGroup.id] = project.id;
       }
     },
     getFilteredImageGroups(imageGroups) {

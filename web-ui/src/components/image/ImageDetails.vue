@@ -340,7 +340,11 @@ export default {
   props: {
     image: {type: Object},
     excludedProperties: {type: Array, default: () => []},
-    editable: {type: Boolean, default: false}
+    editable: {type: Boolean, default: false},
+    context: {
+      type: String,
+      default: 'project'
+    }
   },
   data() {
     return {
@@ -439,9 +443,18 @@ export default {
     },
 
     confirmDeletion() {
+      let title, message;
+      if (this.context === 'imageGroup') {
+        title = this.$t('remove-image-from-group');
+        message = this.$t('remove-image-from-group-confirmation-message', {imageName: this.imageNameNotif});
+      } else {
+        title = this.$t('delete-image');
+        message = this.$t('delete-image-confirmation-message', {imageName: this.imageNameNotif});
+      }
+
       this.$buefy.dialog.confirm({
-        title: this.$t('delete-image'),
-        message: this.$t('delete-image-confirmation-message', {imageName: this.imageNameNotif}),
+        title: title,
+        message: message,
         type: 'is-danger',
         confirmText: this.$t('button-confirm'),
         cancelText: this.$t('button-cancel'),
@@ -450,16 +463,32 @@ export default {
     },
     async deleteImage() {
       try {
-        await ImageInstance.delete(this.image.id);
-        this.$notify({
-          type: 'success',
-          text: this.$t('notif-success-image-deletion', {imageName: this.imageNameNotif})
-        });
-        this.$emit('delete');
+        if (this.context === 'imageGroup') {
+          // Unlink from image group
+          if (this.imageGroupLinks.length > 0) {
+            await this.imageGroupLinks[0].delete();
+            this.$notify({
+              type: 'success',
+              text: this.$t('notif-success-image-unlink', {imageName: this.imageNameNotif})
+            });
+            this.$emit('delete');
+          } else {
+            console.log("Image not in a group, cannot unlink.");
+            this.$notify({ type: 'error', text: this.$t('notif-error-image-unlink-no-group') });
+          }
+        } else { // context === 'project'
+          // Hard delete
+          await ImageInstance.delete(this.image.id);
+          this.$notify({
+            type: 'success',
+            text: this.$t('notif-success-image-deletion', {imageName: this.imageNameNotif})
+          });
+          this.$emit('delete');
 
-        let updatedProject = this.project.clone();
-        updatedProject.numberOfImages--;
-        this.$store.dispatch('currentProject/updateProject', updatedProject);
+          let updatedProject = this.project.clone();
+          updatedProject.numberOfImages--;
+          this.$store.dispatch('currentProject/updateProject', updatedProject);
+        }
       } catch (err) {
         console.log(err);
         this.$notify({

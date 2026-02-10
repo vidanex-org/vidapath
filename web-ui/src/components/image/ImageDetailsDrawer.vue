@@ -17,6 +17,7 @@
           :image="image"
           :editable="editable"
           :excludedProperties="excludedProperties"
+          :context="context"
           @delete="$emit('delete')"
         />
       </div>
@@ -59,6 +60,10 @@ export default {
         'fps',
         'channels'
       ]
+    },
+    context: {
+      type: String,
+      default: 'project'
     }
   },
   mounted() {

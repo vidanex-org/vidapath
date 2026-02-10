@@ -10,6 +10,7 @@
       :active="showDrawer"
       :image="image"
       :editable="true"
+      :context="context"
       @close="showDrawer = false"
       @delete="handleDelete"
     />
@@ -34,6 +35,10 @@ export default {
     project: {
       type: Object,
       required: true
+    },
+    context: {
+      type: String,
+      default: 'project'
     }
   },
   data() {
