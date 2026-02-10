@@ -3,7 +3,8 @@
     <div class="tree-header">
       <div class="search-box">
         <b-input
-          v-model="searchString"
+          :value="searchString"
+          @input="updateSearchString"
           placeholder="Search folders..."
           type="search"
           icon="search"
@@ -16,7 +17,7 @@
             <button
               class="button is-small"
               :class="{ 'is-primary': all }"
-              @click="all = true; revision++"
+              @click="setAllFilter(true)"
             >
               All
             </button>
@@ -25,7 +26,7 @@
             <button
               class="button is-small"
               :class="{ 'is-primary': !all }"
-              @click="all = false; revision++"
+              @click="setAllFilter(false)"
             >
               My
             </button>
@@ -79,7 +80,7 @@
 </template>
 
 <script>
-import { ProjectCollection, ImageGroupCollection, ImageGroup } from '@/api';
+import { mapState, mapGetters, mapActions } from 'vuex';
 import ContextMenu from './ContextMenu.vue';
 
 export default {
@@ -97,111 +98,17 @@ export default {
       default: null
     }
   },
-  data() {
-    return {
-      projects: [],
-      contextMenuItems: [],
-      contextMenuItem: null,
-      contextMenuType: null,
-      all: true,
-      revision: 0,
-      imageGroupProjectMap: {},
-      searchString: ''
-    };
-  },
   computed: {
-    filteredProjects() {
-      if (!this.searchString || this.searchString.trim() === '') {
-        return this.projects;
-      }
-
-      const searchLower = this.searchString.toLowerCase().trim();
-      return this.projects.filter(project => {
-        // Check if project name matches
-        const projectMatches = project.name.toLowerCase().includes(searchLower);
-
-        // Check if any image group matches
-        const hasMatchingImageGroup = project.imageGroups.some(ig =>
-          ig.name.toLowerCase().includes(searchLower)
-        );
-
-        // If either matches, include the project
-        if (projectMatches || hasMatchingImageGroup) {
-          // Auto-expand projects that have matches
-          if (!project.isExpanded && hasMatchingImageGroup) {
-            project.isExpanded = true;
-          }
-          return true;
-        }
-        return false;
-      });
-    }
-  },
-  watch: {
-    revision() {
-      this.fetchProjects();
-    }
+    ...mapState('project-tree', ['projects', 'all', 'searchString']),
+    ...mapGetters('project-tree', ['filteredProjects', 'getFilteredImageGroups'])
   },
   methods: {
-    async fetchProjects() {
-      try {
-        const expandedProjectIds = this.projects
-          .filter(p => p.isExpanded)
-          .map(p => p.id);
-
-        const projectCollection = new ProjectCollection({ all: this.all });
-        const initialProjects = (await projectCollection.fetchAll()).array;
-
-        let newProjects = [];
-        let imageGroupProjectMap = {};
-
-        for (const p of initialProjects) {
-          const imageGroupCollection = new ImageGroupCollection({
-            filterKey: 'project',
-            filterValue: p.id
-          });
-          const fetchedImageGroups = (await imageGroupCollection.fetchAll()).array;
-          
-          fetchedImageGroups.forEach(ig => {
-            imageGroupProjectMap[ig.id] = p.id;
-          });
-          
-          newProjects.push({
-            ...p,
-            imageGroups: fetchedImageGroups,
-            isExpanded: expandedProjectIds.includes(p.id)
-          });
-        }
-
-        this.projects = newProjects;
-        this.imageGroupProjectMap = imageGroupProjectMap;
-
-        // Auto-select the first project if nothing is selected yet
-        if (this.projects.length > 0 && !this.selectedItem) {
-          this.$emit('select-item', { type: 'project', item: this.projects[0] });
-        }
-      } catch (error) {
-        console.error('Error fetching projects or image groups:', error);
-      }
+    ...mapActions('project-tree', ['toggleProject', 'selectImageGroup', 'setAllFilter']),
+    
+    updateSearchString(value) {
+      this.$store.commit('project-tree/SET_SEARCH_STRING', value);
     },
-    toggleProject(project) {
-      project.isExpanded = !project.isExpanded;
-      this.$emit('select-item', { type: 'project', item: project });
-    },
-    selectImageGroup(imageGroup) {
-      const projectId = this.imageGroupProjectMap[imageGroup.id];
-      const project = this.projects.find(p => p.id === projectId);
-      if (project) {
-        project.isExpanded = true;
-      }
-      this.$emit('select-item', { type: 'imageGroup', item: imageGroup });
-    },
-    expandProject(projectToExpand) {
-      const project = this.projects.find(p => p.id === projectToExpand.id);
-      if (project) {
-        project.isExpanded = true;
-      }
-    },
+    
     showContextMenu(event, type, item) {
       this.contextMenuItem = item;
       this.contextMenuType = type;
@@ -248,48 +155,17 @@ export default {
         this.$emit('rename-item', { type: this.contextMenuType, item: this.contextMenuItem });
       }
       else if (item.action === 'delete') {
-        this.deleteItem(this.contextMenuItem);
-      }
-    },
-    getFilteredImageGroups(imageGroups) {
-      if (!this.searchString || this.searchString.trim() === '') {
-        return imageGroups;
-      }
-
-      const searchLower = this.searchString.toLowerCase().trim();
-      return imageGroups.filter(ig =>
-        ig.name.toLowerCase().includes(searchLower)
-      );
-    },
-    deleteItem(item) {
-      this.$buefy.dialog.confirm({
-        title: `Delete ${this.contextMenuType}`,
-        message: `Are you sure you want to delete <b>${item.name}</b>? This action cannot be undone.`,
-        type: 'is-danger',
-        confirmText: 'Delete',
-        onConfirm: async () => {
-          try {
-            if (this.contextMenuType === 'imageGroup') {
-              await new ImageGroup({ id: item.id }).delete();
-              this.fetchProjects(); // Refresh tree
-            }
-          } catch (error) {
-            console.error(`Error deleting ${this.contextMenuType}:`, error);
-          }
-        }
-      });
-    },
-    addImageGroup(project, newImageGroup) {
-      const proj = this.projects.find(p => p.id === project.id);
-      if (proj) {
-        proj.imageGroups.push(newImageGroup);
-        // Ensure the project is expanded to show the new sub-folder
-        proj.isExpanded = true;
+        this.$emit('delete-item', { type: this.contextMenuType, item: this.contextMenuItem });
       }
     }
   },
-  created() {
-    this.fetchProjects();
+  
+  data() {
+    return {
+      contextMenuItem: null,
+      contextMenuType: null,
+      contextMenuItems: []
+    };
   }
 };
 </script>

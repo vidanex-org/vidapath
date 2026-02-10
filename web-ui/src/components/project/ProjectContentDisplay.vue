@@ -84,22 +84,22 @@
         </div>
       </div>
 
-      <div v-if="loading" class="loading-container">
-        <b-loading :is-full-page="false" :active="loading" />
+      <div v-if="contentLoading" class="loading-container">
+        <b-loading :is-full-page="false" :active="contentLoading" />
       </div>
 
       <div v-else class="content-grid">
         <div 
-          v-if="imageGroups.length > 0" 
+          v-if="contentImageGroups.length > 0" 
           class="section-header"
         >
-          <h4 class="subtitle is-6">Folders ({{ imageGroups.length }})</h4>
+          <h4 class="subtitle is-6">Folders ({{ contentImageGroups.length }})</h4>
         </div>
         
         <div class="columns is-multiline image-groups-grid">
           <div 
             class="column is-one-quarter" 
-            v-for="group in imageGroups" 
+            v-for="group in contentImageGroups" 
             :key="`group-${group.id}`"
           >
             <div 
@@ -123,24 +123,24 @@
         </div>
 
         <div 
-          v-if="images.length > 0" 
+          v-if="contentImages.length > 0" 
           class="section-header"
         >
-          <h4 class="subtitle is-6">Images ({{ images.length }})</h4>
+          <h4 class="subtitle is-6">Images ({{ contentImages.length }})</h4>
         </div>
         
         <div class="columns is-multiline images-grid">
                     <ImageCard
-                      v-for="(image, index) in images"
+                      v-for="(image, index) in contentImages"
                       :key="`image-${image.id}`"
                       :image="image"
                       :project="selectedProject"
                       :context="selectedItemType"
-                      @delete="handleImageDelete(index)"
+                      @delete="handleImageDelete(image.id)"
                     />        </div>
 
         <div 
-          v-if="!loading && images.length === 0 && imageGroups.length === 0" 
+          v-if="!contentLoading && contentImages.length === 0 && contentImageGroups.length === 0" 
           class="empty-content-state"
         >
           <div class="empty-icon">
@@ -176,15 +176,15 @@
                 </tr>
                 <tr v-if="selectedItemType === 'project'">
                   <td class="prop-label">Total Images</td>
-                  <td class="prop-content">{{ selectedItem.numberOfImages || images.length }}</td>
+                  <td class="prop-content">{{ selectedItem.numberOfImages || contentImages.length }}</td>
                 </tr>
                 <tr v-if="selectedItemType === 'imageGroup'">
                   <td class="prop-label">Images in this folder</td>
-                  <td class="prop-content">{{ images.length }}</td>
+                  <td class="prop-content">{{ contentImages.length }}</td>
                 </tr>
                 <tr v-if="selectedItemType === 'project'">
                   <td class="prop-label">Sub-folders</td>
-                  <td class="prop-content">{{ imageGroups.length }}</td>
+                  <td class="prop-content">{{ contentImageGroups.length }}</td>
                 </tr>
                 <tr v-if="selectedItemType === 'project'">
                   <td class="prop-label">User Annotations</td>
@@ -272,16 +272,21 @@ export default {
       type: Object,
       default: null
     },
-    revision: {
-      type: Number,
-      default: 0
+    contentLoading: {
+      type: Boolean,
+      default: false
+    },
+    contentImages: {
+      type: Array,
+      default: () => []
+    },
+    contentImageGroups: {
+      type: Array,
+      default: () => []
     }
   },
   data() {
     return {
-      loading: false,
-      images: [],
-      imageGroups: [],
       aiRunners: [],
       singleAIRunnerSelectionModal: false,
       projectToRunAI: null,
@@ -292,7 +297,6 @@ export default {
     };
   },
   computed: {
-    currentUser: get('currentUser/user'),
     canEdit() {
       return !this.$keycloak.hasTemporaryToken && this.selectedItem;
     },
@@ -310,15 +314,6 @@ export default {
     }
   },
   watch: {
-    selectedItem: {
-      immediate: true,
-      handler() {
-        this.fetchContent();
-      }
-    },
-    revision() {
-      this.fetchContent();
-    },
     showDetailsModal(newVal) {
       if (newVal && this.selectedItem && this.selectedItemType === 'project') {
         this.fetchProjectDetails();
@@ -335,54 +330,11 @@ export default {
     }
   },
   methods: {
-    async fetchContent() {
-      this.loading = true;
-      this.images = [];
-      this.imageGroups = [];
-
-      if (!this.selectedItem) {
-        this.loading = false;
-        return;
-      }
-
-      try {
-        if (this.selectedItemType === 'project') {
-          // Fetch image groups for the project
-          const imageGroupCollection = new ImageGroupCollection({
-            filterKey: 'project',
-            filterValue: this.selectedItem.id
-          });
-          const fetchedImageGroups = await imageGroupCollection.fetchAll();
-          this.imageGroups = fetchedImageGroups.array;
-
-          // Fetch images for the project (not belonging to any image group directly)
-          const imageInstanceCollection = new ImageInstanceCollection({
-            filterKey: 'project',
-            filterValue: this.selectedItem.id
-          });
-          const fetchedImages = await imageInstanceCollection.fetchAll();
-          this.images = fetchedImages.array.filter(image => !image.imageGroup);
-        } else if (this.selectedItemType === 'imageGroup') {
-          // Fetch images for the image group
-          const imageInstanceCollection = new ImageInstanceCollection({
-            filterKey: 'imagegroup',
-            filterValue: this.selectedItem.id
-          });
-          const fetchedImages = await imageInstanceCollection.fetchAll();
-          this.images = fetchedImages.array;
-        }
-      } catch (error) {
-        console.error('Error fetching content:', error);
-      } finally {
-        this.loading = false;
-      }
-    },
-
     runAIOnProject(project) {
       // 单个项目运行AI功能
       if (this.aiRunners.length === 0) {
         this.$buefy.toast.open({
-          message: this.$t('no-ai-runners-available'),
+          message: 'No AI runners available',
           type: 'is-danger'
         });
         return;
@@ -397,8 +349,8 @@ export default {
         title: `Confirm whether to run the ${selectedRunner.name} algorithm`,
         message: 'This run will be in the background, so don\'t need to wait for.',
         type: 'is-primary',
-        confirmText: this.$t('button-confirm'),
-        cancelText: this.$t('button-cancel'),
+        confirmText: 'Confirm',
+        cancelText: 'Cancel',
         onConfirm: async () => {
           try {
             // 为单个项目运行AI算法
@@ -411,13 +363,13 @@ export default {
             await AIAlgorithmJob.runAlgorithm(requestData);
 
             this.$buefy.toast.open({
-              message: this.$t('single-ai-processing-started'),
+              message: 'AI processing started',
               type: 'is-success'
             });
           } catch (error) {
             console.error('Error running AI algorithm:', error);
             this.$buefy.toast.open({
-              message: this.$t('error-running-ai-algorithm'),
+              message: 'Error running AI algorithm',
               type: 'is-danger'
             });
           }
@@ -447,8 +399,8 @@ export default {
       this.$emit('select-item', { type: 'imageGroup', item: group });
     },
 
-    handleImageDelete(index) {
-      this.images.splice(index, 1);
+    handleImageDelete(imageId) {
+      this.$emit('refresh-projects', imageId);
     }
   }
 };
