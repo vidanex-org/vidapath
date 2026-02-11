@@ -29,4 +29,5 @@ public class ProjectSearchExtension {
     private boolean withMembersCount;
     private boolean withLastActivity;
     private boolean withCurrentUserRoles;
+    private boolean withImageGroups;
 }

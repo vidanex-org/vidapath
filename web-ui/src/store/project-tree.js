@@ -2,7 +2,6 @@ import { ProjectCollection, ImageGroupCollection, ImageInstanceCollection, Proje
 
 const state = {
   projects: [],
-  imageGroupProjectMap: {},
   selectedItem: null,
   selectedItemType: null,
   selectedProject: null,
@@ -17,9 +16,6 @@ const state = {
 const mutations = {
   SET_PROJECTS(state, projects) {
     state.projects = projects;
-  },
-  SET_IMAGE_GROUP_PROJECT_MAP(state, map) {
-    state.imageGroupProjectMap = map;
   },
   SET_SELECTED_ITEM(state, { item, type }) {
     state.selectedItem = item;
@@ -73,39 +69,31 @@ const actions = {
         .filter(p => p.isExpanded)
         .map(p => p.id);
 
-      const projectCollection = new ProjectCollection({ all: state.all });
+      // 使用新的 withImageGroups 参数一次性获取项目和 imagegroups
+      const projectCollection = new ProjectCollection({
+        all: state.all,
+        withImageGroups: true
+      });
       const initialProjects = (await projectCollection.fetchAll()).array;
 
-      let newProjects = [];
-      let imageGroupProjectMap = {};
+      // Create projects with image groups data
+      let newProjects = initialProjects.map(p => ({
+        ...p,
+        imageGroups: p.imageGroups || [],
+        isExpanded: expandedProjectIds.includes(p.id)
+      }));
 
-      for (const p of initialProjects) {
-        const imageGroupCollection = new ImageGroupCollection({
-          filterKey: 'project',
-          filterValue: p.id
-        });
-        const fetchedImageGroups = (await imageGroupCollection.fetchAll()).array;
-        
-        fetchedImageGroups.forEach(ig => {
-          imageGroupProjectMap[ig.id] = p.id;
-        });
-        
-        newProjects.push({
-          ...p,
-          imageGroups: fetchedImageGroups,
-          isExpanded: expandedProjectIds.includes(p.id)
-        });
-      }
+      console.log('Projects:', newProjects);
 
       commit('SET_PROJECTS', newProjects);
-      commit('SET_IMAGE_GROUP_PROJECT_MAP', imageGroupProjectMap);
 
       // Auto-select the first project if nothing is selected yet
       if (newProjects.length > 0 && !state.selectedItem) {
         commit('SET_SELECTED_ITEM', { item: newProjects[0], type: 'project' });
       }
+      
     } catch (error) {
-      console.error('Error fetching projects or image groups:', error);
+      console.error('Error fetching projects:', error);
     }
   },
 
@@ -122,13 +110,8 @@ const actions = {
       }
 
       if (state.selectedItemType === 'project') {
-        // Fetch image groups for the project
-        const imageGroupCollection = new ImageGroupCollection({
-          filterKey: 'project',
-          filterValue: state.selectedItem.id
-        });
-        const fetchedImageGroups = await imageGroupCollection.fetchAll();
-        imageGroups = fetchedImageGroups.array;
+        // Use already loaded image groups
+        imageGroups = state.selectedItem.imageGroups || [];
 
         // Fetch images for the project (not belonging to any image group directly)
         const imageInstanceCollection = new ImageInstanceCollection({
@@ -161,7 +144,6 @@ const actions = {
       return;
     }
 
-    commit('SET_PROJECT_DETAILS_LOADING', true);
     try {
       // Fetch representatives
       const representatives = (await state.selectedItem.fetchRepresentatives()).array;
@@ -172,8 +154,6 @@ const actions = {
     } catch (error) {
       console.error('Error fetching project details:', error);
       commit('SET_PROJECT_DETAILS', { representatives: [], onlines: [] });
-    } finally {
-      commit('SET_PROJECT_DETAILS_LOADING', false);
     }
   },
 
@@ -182,22 +162,25 @@ const actions = {
     return dispatch('fetchProjects');
   },
 
-  toggleProject({ commit }, project) {
-    commit('TOGGLE_PROJECT_EXPANSION', project);
+  async toggleProject({ commit, state }, project) {
+    const proj = state.projects.find(p => p.id === project.id);
+    if (proj) {
+      commit('TOGGLE_PROJECT_EXPANSION', project);
+    }
     commit('SET_SELECTED_ITEM', { item: project, type: 'project' });
   },
 
-  selectImageGroup({ commit, state }, imageGroup) {
-    const projectId = state.imageGroupProjectMap[imageGroup.id];
+  async selectImageGroup({ commit, state }, imageGroup) {
+    const projectId = imageGroup.project;
     const project = state.projects.find(p => p.id === projectId);
-    if (project) {
+    if (project && !project.isExpanded) {
       commit('EXPAND_PROJECT', project);
     }
     commit('SET_SELECTED_ITEM', { item: imageGroup, type: 'imageGroup' });
   },
 
   findProjectForImageGroup({ state }, imageGroup) {
-    const projectId = state.imageGroupProjectMap[imageGroup.id];
+    const projectId = imageGroup.project;
     return state.projects.find(p => p.id === projectId);
   }
 };
@@ -213,21 +196,11 @@ const getters = {
       // Check if project name matches
       const projectMatches = project.name.toLowerCase().includes(searchLower);
 
-      // Check if any image group matches
-      const hasMatchingImageGroup = project.imageGroups.some(ig =>
-        ig.name.toLowerCase().includes(searchLower)
-      );
+      // Check if any image group matches (only check loaded image groups)
+      const hasMatchingImageGroup = project.imageGroups && 
+        project.imageGroups.some(ig => ig.name.toLowerCase().includes(searchLower));
 
-      // If either matches, include the project
-      if (projectMatches || hasMatchingImageGroup) {
-        // Auto-expand projects that have matches
-        if (!project.isExpanded && hasMatchingImageGroup) {
-          // This will be handled by the getter, but we need to ensure it's expanded
-          // We'll handle this in the component instead of modifying state here
-        }
-        return true;
-      }
-      return false;
+      return projectMatches || hasMatchingImageGroup;
     });
   },
 
@@ -246,17 +219,13 @@ const getters = {
   contentLoading: (state) => state.contentLoading,
   contentImages: (state) => state.images,
   contentImageGroups: (state) => state.imageGroups,
-  projectDetailsLoading: (state) => state.projectDetails.loading,
-  projectRepresentatives: (state) => state.projectDetails.representatives,
-  projectOnlines: (state) => state.projectDetails.onlines,
   
   // Helper getter to find project for image group
   findProjectForImageGroup: (state) => (imageGroup) => {
-    const projectId = state.imageGroupProjectMap[imageGroup.id];
+    const projectId = imageGroup.project;
     return state.projects.find(p => p.id === projectId);
   }
 };
-
 export default {
   namespaced: true,
   state,
