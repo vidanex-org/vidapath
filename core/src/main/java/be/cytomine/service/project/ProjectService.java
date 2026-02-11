@@ -440,6 +440,16 @@ public class ProjectService extends ModelService {
             */
         }
 
+        if (projectSearchExtension.isWithImageGroups()) {
+            select += ", image_groups.image_groups_list ";
+            from += "LEFT OUTER JOIN ( " +
+                    "  SELECT ig.project_id, " +
+                    "  STRING_AGG(CONCAT(ig.id, ':', ig.name, ':', ig.project_id), ',') as image_groups_list " +
+                    "  FROM image_group ig " +
+                    "  GROUP BY ig.project_id " +
+                    ") image_groups ON image_groups.project_id = p.id ";
+        }
+
 
         switch(sortColumn) {
             case "currentUserRole" :
@@ -587,6 +597,21 @@ public class ProjectService extends ModelService {
                     "representatives", representativeUsers
                 ));
             }
+
+            if (projectSearchExtension.isWithImageGroups()) {
+                String imageGroupsList = (String)result.get("imageGroupsList");
+                List<JsonObject> imageGroups = new ArrayList<>();
+                if (imageGroupsList != null && !imageGroupsList.isEmpty()) {
+                    String[] groups = imageGroupsList.split(",");
+                    for (String group : groups) {
+                        String[] parts = group.split(":");
+                        if (parts.length == 3) {
+                            imageGroups.add(JsonObject.of("id", Long.valueOf(parts[0]), "name", parts[1], "project", Long.valueOf(parts[2])));
+                        }
+                    }
+                }
+                object.put("imageGroups", imageGroups);
+            }
             results.add(object);
         }
         request = "SELECT COUNT(DISTINCT p.id) " + from + where + search;
@@ -599,7 +624,6 @@ public class ProjectService extends ModelService {
         return page;
 
     }
-
     public List<JsonObject> findCommandHistory(List<Project> projects, Long user, Long max, Long offset,
                                                Boolean fullData, Long startDate, Long endDate) {
 

@@ -63,6 +63,7 @@ public class RestProjectController extends RestCytomineController {
             @RequestParam(value = "withLastActivity", defaultValue = "false", required = false) Boolean withLastActivity,
             @RequestParam(value = "withDescription", defaultValue = "false", required = false) Boolean withDescription,
             @RequestParam(value = "withCurrentUserRoles", defaultValue = "false", required = false) Boolean withCurrentUserRoles,
+            @RequestParam(value = "withImageGroups", defaultValue = "false", required = false) Boolean withImageGroups,
             @RequestParam(value = "sort", defaultValue = "created", required = false) String sort,
             @RequestParam(value = "order", defaultValue = "desc", required = false) String order,
             @RequestParam(value = "offset", defaultValue = "0", required = false) Long offset,
@@ -88,6 +89,7 @@ public class RestProjectController extends RestCytomineController {
             projectSearchExtension.setWithLastActivity(withLastActivity);
             projectSearchExtension.setWithDescription(withDescription);
             projectSearchExtension.setWithCurrentUserRoles(withCurrentUserRoles);
+            projectSearchExtension.setWithImageGroups(withImageGroups);
             List<SearchParameterEntry> searchParameterEntryList = super.retrieveSearchParameters();
             
             // 添加项目ID过滤条件
@@ -105,6 +107,7 @@ public class RestProjectController extends RestCytomineController {
             projectSearchExtension.setWithLastActivity(withLastActivity);
             projectSearchExtension.setWithDescription(withDescription);
             projectSearchExtension.setWithCurrentUserRoles(withCurrentUserRoles);
+            projectSearchExtension.setWithImageGroups(withImageGroups);
             List<SearchParameterEntry> searchParameterEntryList = super.retrieveSearchParameters();
             return responseSuccess(projectService.list(user, projectSearchExtension, searchParameterEntryList, sort, order, max, offset));
         }
