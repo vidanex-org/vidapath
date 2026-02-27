@@ -204,7 +204,15 @@ class FileImporter:
             if format is None:
                 self.notify(ImportEventType.ERROR_NO_FORMAT, self.upload_path)
                 if AUTO_DELETE_FAILED_UPLOAD and self.upload_path.exists():
-                    self.upload_path.delete_upload_root()
+                    try:
+                        self.upload_path.delete_upload_root()
+                    except FileNotFoundError:
+                        # 如果无法找到上传根目录，则尝试删除当前路径
+                        if self.upload_path.exists():
+                            if self.upload_path.is_dir():
+                                shutil.rmtree(self.upload_path)
+                            else:
+                                self.upload_path.unlink()
                 raise NoMatchingFormatProblem(self.upload_path)
             self.notify(
                 ImportEventType.END_FORMAT_DETECTION,
@@ -232,7 +240,15 @@ class FileImporter:
                         exception=e
                     )
                     if AUTO_DELETE_FAILED_UPLOAD and self.upload_path.exists():
-                        self.upload_path.delete_upload_root()
+                        try:
+                            self.upload_path.delete_upload_root()
+                        except FileNotFoundError:
+                            # 如果无法找到上传根目录，则尝试删除当前路径
+                            if self.upload_path.exists():
+                                if self.upload_path.is_dir():
+                                    shutil.rmtree(self.upload_path)
+                                else:
+                                    self.upload_path.unlink()
                     raise FileErrorProblem(self.upload_path)
 
                 # Now the archive is extracted, check if it's a multi-file format

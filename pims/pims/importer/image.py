@@ -82,7 +82,7 @@ class ImageImporter:
             return ImportResult(name=image_path.name, success=True)
         except Exception as e:
             logger.error(f"Failed to import '{image_path.name}': {e}")
-            return ImportResult(name=image_path.name, success=False, message=e)
+            return ImportResult(name=image_path.name, success=False, message=str(e))
 
     def run(self, projects=[]) -> ImportSummary:
         logger.info("[START] Import images...")
@@ -162,7 +162,7 @@ class ImageImporter:
             return ImportResult(name=file_path.name, success=True)
         except Exception as e:
             logger.error(f"Failed to import '{file_path.name}': {e}")
-            return ImportResult(name=file_path.name, success=False, message=e)
+            return ImportResult(name=file_path.name, success=False, message=str(e))
 
 
 def is_already_imported(image_path: Path, data_path: Path) -> bool:

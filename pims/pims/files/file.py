@@ -269,9 +269,16 @@ class Path(PlatformPath, _Path, SafelyCopiable):
         """
         Delete the all the representations of an image, including the related upload folder.
         """
-
-        upload_root = self.get_upload().resolve().upload_root()
-        shutil.rmtree(upload_root)
+        try:
+            upload_root = self.get_upload().resolve().upload_root()
+            shutil.rmtree(upload_root)
+        except FileNotFoundError:
+            # If we can't find the upload root, try to remove the current file/directory
+            if self.exists():
+                if self.is_dir():
+                    shutil.rmtree(self)
+                else:
+                    self.unlink()
         return None
 
     def processed_root(self) -> Path:
