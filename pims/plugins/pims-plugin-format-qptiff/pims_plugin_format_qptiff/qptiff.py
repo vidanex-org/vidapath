@@ -1,5 +1,6 @@
 from functools import lru_cache
 import numpy as np
+import pyvips
 from pyvips import Image as VIPSImage
 from typing import Optional, Union, List
 from lxml import etree
@@ -77,47 +78,91 @@ class QPTiffParser(AbstractParser):
         imd.pixel_type = page.dtype
         imd.n_samples = page.samplesperpixel
         
+        # Handle multi-channel grayscale images vs RGB images
         if page.samplesperpixel > 1:
             imd.n_concrete_channels = 1
             colors = [infer_channel_color(None, i, imd.n_samples) for i in range(imd.n_samples)]
             for i in range(imd.n_samples):
                  imd.set_channel(ImageChannel(index=i, suggested_name=['R','G','B'][i], color=colors[i]))
+
         else:
-            n_channels = 1
-            for ifd in tf.pages[1:]:
-                if ifd.imagewidth == page.imagewidth and ifd.imagelength == page.imagelength:
-                    comment = self._get_ifd_comment(ifd)
-                    if comment:
-                        xml_metadata = self._parse_xml_metadata(comment)
-                        if 'ImageType' in xml_metadata:
-                            break
-                    n_channels += 1
-                else:
-                    break
-            imd.n_concrete_channels = n_channels
-        
-            for i in range(imd.n_concrete_channels):
-                channel_ifd = tf.pages[i]
-                comment = self._get_ifd_comment(channel_ifd)
-                color = None
-                name = None
+            # Case 2: Multiple pages with 1 sample per pixel - multi-channel grayscale images
+            # Let's identify which pages are actual channels by their characteristics
+            actual_channels = []
+            
+            for idx, ifd in enumerate(tf.pages):
+                comment = self._get_ifd_comment(ifd)
                 if comment:
                     xml_metadata = self._parse_xml_metadata(comment)
+                    if 'ImageType' in xml_metadata:
+                        img_type = xml_metadata['ImageType']
+                        # Skip if this is a special image type (not a regular channel)
+                        if img_type in ['Thumbnail', 'Label', 'Macro', 'Overview']:
+                            continue
+                
+                # Check if this IFD has the same dimensions as the main page (indicating it's a channel)
+                if ifd.imagewidth == page.imagewidth and ifd.imagelength == page.imagelength:
+                    # Additional check: if this page has samplesperpixel > 1, it might be a multichannel RGB page
+                    # But since we're in the else branch, the first page had samplesperpixel = 1
+                    actual_channels.append(idx)
+                else:
+                    # Once we encounter a different sized image, we can stop checking
+                    # since pyramid levels and other images typically come after all channels
+                    break
+            
+            # Limit to max 3 channels to prevent index out of bounds errors
+            actual_channels = actual_channels[:3]
+            # Set the concrete channel count to the number of actual channels found
+            imd.n_concrete_channels = len(actual_channels)
+            
+            # Process each identified channel
+            for i, channel_idx in enumerate(actual_channels):
+                # Get the current IFD
+                if channel_idx >= len(tf.pages):
+                    continue  # Skip if index is out of bounds
+                channel_ifd = tf.pages[channel_idx]
+                
+                # Get comment for this channel
+                comment = self._get_ifd_comment(channel_ifd)
+                
+                color = None
+                name = None
+                biomarker = None
+                
+                if comment:
+                    xml_metadata = self._parse_xml_metadata(comment)
+                    
+                    # Check for biomarker first (preferred channel name)
+                    if 'Biomarker' in xml_metadata and xml_metadata['Biomarker']:
+                        biomarker = xml_metadata['Biomarker']
+                        # If Biomarker exists, Name might be stored as Fluor
+                        if 'Name' in xml_metadata and xml_metadata['Name']:
+                            name = xml_metadata['Name']
+                    elif 'Name' in xml_metadata and xml_metadata['Name']:
+                        # Fallback to Name if Biomarker doesn't exist
+                        name = xml_metadata['Name']
+                    
+                    # Handle color
                     if 'Color' in xml_metadata:
                         rgb_str = xml_metadata['Color']
                         try:
                             r, g, b = [int(c) for c in rgb_str.split(',')]
                             color_int = (r << 16) + (g << 8) + b
-                            color = infer_channel_color(color_int, i, imd.n_concrete_channels)
+                            color = infer_channel_color(color_int, i, len(actual_channels))
                         except (ValueError, IndexError):
                             pass
-                    if 'Name' in xml_metadata:
-                        name = xml_metadata['Name']
 
                 if color is None:
-                    color = infer_channel_color(None, i, imd.n_concrete_channels)
+                    color = infer_channel_color(None, i, len(actual_channels))
                 
-                imd.set_channel(ImageChannel(index=i, suggested_name=name, color=color))
+                # Create channel with appropriate name
+                if biomarker:
+                    ch = ImageChannel(index=i, suggested_name=biomarker, color=color)
+                    ch.fluor_name = name  # Store alternative name as fluor
+                else:
+                    ch = ImageChannel(index=i, suggested_name=name, color=color)
+                
+                imd.set_channel(ch)
 
         return imd
 
@@ -131,9 +176,18 @@ class QPTiffParser(AbstractParser):
             x_res = page.tags['XResolution'].value
             y_res = page.tags['YResolution'].value
             
-            imd.physical_size_x = UNIT_REGISTRY.Quantity(x_res[1] / x_res[0], 'micrometer')
-            imd.physical_size_y = UNIT_REGISTRY.Quantity(y_res[1] / y_res[0], 'micrometer')
+            # Calculate physical sizes (tifffile stores as rationals)
+            if hasattr(x_res, '__len__') and len(x_res) >= 2:
+                imd.physical_size_x = UNIT_REGISTRY.Quantity(x_res[1] / x_res[0], 'micrometer')
+            elif isinstance(x_res, (int, float)):
+                imd.physical_size_x = UNIT_REGISTRY.Quantity(1.0 / x_res, 'micrometer') if x_res != 0 else None
+                
+            if hasattr(y_res, '__len__') and len(y_res) >= 2:
+                imd.physical_size_y = UNIT_REGISTRY.Quantity(y_res[1] / y_res[0], 'micrometer')
+            elif isinstance(y_res, (int, float)):
+                imd.physical_size_y = UNIT_REGISTRY.Quantity(1.0 / y_res, 'micrometer') if y_res != 0 else None
 
+        # Extract metadata from first channel's XML
         comment = self._get_ifd_comment(page)
         if comment:
             xml_metadata = self._parse_xml_metadata(comment)
@@ -143,34 +197,30 @@ class QPTiffParser(AbstractParser):
                     imd.objective.nominal_magnification = mag
                 except (ValueError, TypeError):
                     pass
-            # if 'ExposureTime' in xml_metadata:
-            #     try:
-            #         imd.acquisition.exposure_time = UNIT_REGISTRY.Quantity(float(xml_metadata['ExposureTime']), 'microsecond')
-            #     except (ValueError, TypeError):
-            #         pass
-            # if 'Gain' in xml_metadata:
-            #     try:
-            #         imd.camera.gain = float(xml_metadata['Gain'])
-            #     except (ValueError, TypeError):
-            #         pass
-            # if 'CameraName' in xml_metadata:
-            #     imd.camera.model = xml_metadata['CameraName']
+            if 'ExposureTime' in xml_metadata:
+                try:
+                    imd.exposure_time = UNIT_REGISTRY.Quantity(float(xml_metadata['ExposureTime']), 'microsecond')
+                except (ValueError, TypeError):
+                    pass
+            if 'OperatorName' in xml_metadata:
+                imd.operator_name = xml_metadata['OperatorName']
+            if 'SampleDescription' in xml_metadata:
+                imd.description = xml_metadata['SampleDescription']
 
-
-        # Associated images
-        for ifd in tf.pages:
+        # Find and process associated images (thumbnail, label, macro)
+        for idx, ifd in enumerate(tf.pages):
             comment = self._get_ifd_comment(ifd)
             if comment:
                 xml_metadata = self._parse_xml_metadata(comment)
                 if 'ImageType' in xml_metadata:
                     image_type = xml_metadata['ImageType']
                     associated = None
-                    if image_type == 'Thumbnail':
+                    if image_type.lower() in ['thumbnail', 'thumb']:
                         associated = imd.associated_thumb
-                    elif image_type == 'Overview':
-                        associated = imd.associated_macro
-                    elif image_type == 'Label':
+                    elif image_type.lower() == 'label':
                         associated = imd.associated_label
+                    elif image_type.lower() in ['macro', 'overview']:
+                        associated = imd.associated_macro
                     
                     if associated:
                         associated.width = ifd.imagewidth
@@ -191,114 +241,152 @@ class QPTiffParser(AbstractParser):
                         if element.text:
                             store.set(f"IFD{i}_{element.tag}", element.text.strip(), namespace="QPTIFF")
                 except etree.XMLSyntaxError:
-                    pass
+                    # Fallback: store raw comment
+                    store.set(f"IFD{i}_raw_comment", comment, namespace="QPTIFF")
         return store
 
     def parse_pyramid(self) -> Pyramid:
         pyramid = Pyramid()
         tf = cached_qptiff_file(self.format)
-        n_channels = self.format.main_imd.n_concrete_channels
+        main_imd = self.format.main_imd
+
+        levels = {}  # (width, height) -> page_index
+
+        # Find level 0
+        levels[(main_imd.width, main_imd.height)] = 0
+
+        # Find other pyramid levels by looking for reduced resolution pages
+        for idx, page in enumerate(tf.pages):
+            subfile_type = page.tags.get('NewSubfileType')
+            # Check if it's a reduced resolution image (bit 0 of NewSubfileType is 1)
+            if subfile_type and subfile_type.value & 1:
+                dims = (page.imagewidth, page.imagelength)
+                if dims not in levels:
+                    # This is the first time we see this dimension, record its starting page index
+                    levels[dims] = idx
         
-        # Level 0: full resolution
-        page = tf.pages[0]
-        tile_width = page.tilewidth if page.is_tiled else page.imagewidth
-        tile_height = page.tilelength if page.is_tiled else page.imagelength
-        pyramid.insert_tier(
-            width=page.imagewidth,
-            height=page.imagelength,
-            tile_size=(tile_width, tile_height)
-        )
+        # Sort levels by width in descending order to build the pyramid from largest to smallest
+        sorted_dims = sorted(levels.keys(), key=lambda d: d[0], reverse=True)
         
-        ifd_offset = n_channels
-        
-        while ifd_offset < len(tf.pages):
-            page = tf.pages[ifd_offset]
-            # Subfiletype 1 indicates a reduced resolution image
-            subfiletype_tag = page.tags.get('NewSubfileType')
-            if subfiletype_tag and subfiletype_tag.value == 1:
-                tile_width = page.tilewidth if page.is_tiled else page.imagewidth
-                tile_height = page.tilelength if page.is_tiled else page.imagelength
-                pyramid.insert_tier(
-                    width=page.imagewidth,
-                    height=page.imagelength,
-                    tile_size=(tile_width, tile_height)
-                )
-                ifd_offset += n_channels
-            else:
-                break
-                
+        for dims in sorted_dims:
+            width, height = dims
+            page_index = levels[dims]
+            
+            # Get tile size from the first page of the level
+            page = tf.pages[page_index]
+            tile_width = page.tilewidth if page.is_tiled else page.imagewidth
+            tile_height = page.tilelength if page.is_tiled else page.imagelength
+            
+            pyramid.insert_tier(
+                width=width,
+                height=height,
+                tile_size=(tile_width, tile_height),
+                page_index=page_index
+            )
+            
         return pyramid
 
 
 class QPTiffReader(AbstractReader):
     """
     Reader for QPTiff images.
-    It uses pyvips to read pixel data.
+    It uses pyvips to read pixel data, returning raw, unscaled VIPSImage objects.
     """
 
-    def _get_ifd_index(self, tier: int, c: int) -> int:
+    def _read_and_process_bands(
+        self, page_indices: List[int], region: Region, out_width: int, out_height: int
+    ) -> VIPSImage:
         """
-        Get the absolute IFD index for a given tier and channel.
+        Core helper to read, join, crop, and resize image bands without scaling intensity.
         """
-        n_channels = self.format.main_imd.n_concrete_channels
-        ifd_index = tier * n_channels + c
-        return ifd_index
+        bands = []
+        for page_index in page_indices:
+            try:
+                vips_img = VIPSImage.new_from_file(
+                    str(self.format.path), page=page_index, access="sequential"
+                )
+                bands.append(vips_img)
+            except pyvips.Error:
+                logger.warning(f"Could not load page {page_index}. Skipping.")
+
+        if not bands:
+            raise RuntimeError(f"Could not read any bands for region {region}.")
+
+        # Join bands into a single image
+        image = bandjoin(bands) if len(bands) > 1 else bands[0]
+        
+        # Crop the image to the requested region
+        img_region = image.crop(region.left, region.top, region.width, region.height)
+            
+        # Resize if necessary
+        if (out_width, out_height) != (region.width, region.height):
+            sx = out_width / region.width
+            sy = out_height / region.height
+            img_region = img_region.resize(sx, vscale=sy)
+
+        return img_region
 
     def read_window(
         self, region: Region, out_width: int, out_height: int,
-        c: Optional[Union[int, List[int]]] = None, z: Optional[int] = None, t: Optional[int] = None
+        c: Optional[Union[int, List[int]]] = None, z: Optional[int] = None, t: Optional[int] = None,
+        **kwargs
     ) -> VIPSImage:
         
         tier = self.format.pyramid.most_appropriate_tier(
             region, (out_width, out_height)
         )
         region = region.scale_to_tier(tier)
+        page_start_index = tier.data['page_index']
 
         if c is None:
             c = list(range(self.format.main_imd.n_concrete_channels))
         elif isinstance(c, int):
             c = [c]
         
-        bands = []
-        for channel in c:
-            ifd_index = self._get_ifd_index(tier.level, channel)
-            vips_img = VIPSImage.new_from_file(
-                str(self.format.path), page=ifd_index
-            )
-            
-            # Crop the image to the requested region
-            img_region = vips_img.crop(region.left, region.top, region.width, region.height)
-            
-            # Resize if necessary
-            if (out_width, out_height) != (region.width, region.height):
-                sx = out_width / region.width
-                sy = out_height / region.height
-                img_region = img_region.resize(sx, vscale=sy)
-
-            bands.append(img_region)
+        page_indices = [page_start_index + channel for channel in c]
         
-        if len(bands) > 1:
-            final_image = bandjoin(bands)
-        else:
-            final_image = bands[0]
-
-        return final_image
+        return self._read_and_process_bands(page_indices, region, out_width, out_height)
 
     def read_thumb(
         self, out_width: int, out_height: int, precomputed: bool = None,
-        c: Optional[Union[int, List[int]]] = None, z: Optional[int] = None, t: Optional[int] = None
+        c: Optional[Union[int, List[int]]] = None, z: Optional[int] = None, t: Optional[int] = None,
+        **kwargs
     ) -> VIPSImage:
         """
         Read a thumbnail of the image.
-        This implementation reads the highest pyramid level and scales it down.
+        Tries to use a precomputed thumbnail if available, otherwise generates
+        it from the lowest-resolution pyramid level.
         """
-        highest_tier = list(self.format.pyramid)[-1]
-        region = Region(0, 0, highest_tier.width, highest_tier.height)
-        return self.read_window(region, out_width, out_height, c, z, t)
+        # 1. Try to read precomputed thumbnail
+        if precomputed is not False:
+            thumb_meta = self.format.parser.parse_known_metadata().associated_thumb
+            if thumb_meta and thumb_meta.width and thumb_meta.height:
+                tf = cached_qptiff_file(self.format)
+                for idx, page in enumerate(tf.pages):
+                    comment = self.format.parser._get_ifd_comment(page)
+                    if comment:
+                        xml_metadata = self.format.parser._parse_xml_metadata(comment)
+                        image_type = xml_metadata.get('ImageType', '').lower()
+                        if image_type in ['thumbnail', 'thumb']:
+                            region = Region(0, 0, thumb_meta.width, thumb_meta.height)
+                            return self._read_and_process_bands([idx], region, out_width, out_height)
+
+        if precomputed:
+            raise ValueError("Precomputed thumbnail requested but not found.")
+
+        # 2. Fallback to lowest-res pyramid level
+        pyramid = self.format.pyramid
+        if len(pyramid) > 0:
+            lowest_tier = list(pyramid)[-1]
+            region = Region(0, 0, lowest_tier.width, lowest_tier.height)
+            return self.read_window(region, out_width, out_height, c, z, t)
+
+        raise RuntimeError("Could not generate thumbnail: no pyramid and no precomputed thumbnail found.")
 
     def read_tile(
         self, tile: Tile,
-        c: Optional[Union[int, List[int]]] = None, z: Optional[int] = None, t: Optional[int] = None
+        c: Optional[Union[int, List[int]]] = None, z: Optional[int] = None, t: Optional[int] = None,
+        **kwargs
     ) -> VIPSImage:
         return self.read_window(tile, tile.width, tile.height, c, z, t)
 
