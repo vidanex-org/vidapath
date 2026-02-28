@@ -131,34 +131,46 @@ class QPTiffParser(AbstractParser):
                 
                 if comment:
                     xml_metadata = self._parse_xml_metadata(comment)
-                    
-                    # Check for biomarker first (preferred channel name)
                     if 'Biomarker' in xml_metadata and xml_metadata['Biomarker']:
                         biomarker = xml_metadata['Biomarker']
-                        # If Biomarker exists, Name might be stored as Fluor
                         if 'Name' in xml_metadata and xml_metadata['Name']:
                             name = xml_metadata['Name']
                     elif 'Name' in xml_metadata and xml_metadata['Name']:
-                        # Fallback to Name if Biomarker doesn't exist
                         name = xml_metadata['Name']
-                    
-                    # Handle color
-                    if 'Color' in xml_metadata:
-                        rgb_str = xml_metadata['Color']
-                        try:
-                            r, g, b = [int(c) for c in rgb_str.split(',')]
-                            color_int = (r << 16) + (g << 8) + b
-                            color = infer_channel_color(color_int, i, len(actual_channels))
-                        except (ValueError, IndexError):
-                            pass
 
+                # Highest priority: check name against our fluorophore map
+                final_name = biomarker if biomarker else name
+                fluor_map = {
+                    'dapi': '#0000FF',
+                    'fitc': '#00FF00', # Pure Green
+                    'cy3': '#FF0000',
+                    'cy5': '#FF00FF', # Magenta
+                    'texas red': '#FF0000'
+                }
+
+                if final_name:
+                    mapped_color = fluor_map.get(final_name.lower())
+                    if mapped_color:
+                        color = infer_channel_color(mapped_color, i, len(actual_channels))
+
+                # Second priority: check the Color tag in the XML, if not already set
+                if color is None and comment and 'Color' in xml_metadata:
+                    rgb_str = xml_metadata['Color']
+                    try:
+                        r, g, b = [int(c) for c in rgb_str.split(',')]
+                        color_int = (r << 16) + (g << 8) + b
+                        color = infer_channel_color(color_int, i, len(actual_channels))
+                    except (ValueError, IndexError):
+                        pass
+
+                # Final fallback: index-based color
                 if color is None:
                     color = infer_channel_color(None, i, len(actual_channels))
                 
                 # Create channel with appropriate name
                 if biomarker:
                     ch = ImageChannel(index=i, suggested_name=biomarker, color=color)
-                    ch.fluor_name = name  # Store alternative name as fluor
+                    ch.fluor_name = name
                 else:
                     ch = ImageChannel(index=i, suggested_name=name, color=color)
                 
