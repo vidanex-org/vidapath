@@ -138,32 +138,33 @@ class QPTiffParser(AbstractParser):
                     elif 'Name' in xml_metadata and xml_metadata['Name']:
                         name = xml_metadata['Name']
 
-                # Highest priority: check name against our fluorophore map
-                final_name = biomarker if biomarker else name
-                fluor_map = {
-                    'dapi': '#0000FF',
-                    'fitc': '#00FF00', # Pure Green
-                    'cy3': '#FF0000',
-                    'cy5': '#FF00FF', # Magenta
-                    'texas red': '#FF0000'
-                }
+                    # Priority 1: Use the <Color> tag from the file's metadata if it exists.
+                    if 'Color' in xml_metadata:
+                        rgb_str = xml_metadata['Color']
+                        try:
+                            r, g, b = [int(c) for c in rgb_str.split(',')]
+                            # Pass the tuple directly, as infer_channel_color can handle it.
+                            # This avoids incorrect integer conversion.
+                            color = infer_channel_color((r, g, b), i, len(actual_channels))
+                        except (ValueError, IndexError):
+                            pass
 
-                if final_name:
-                    mapped_color = fluor_map.get(final_name.lower())
-                    if mapped_color:
-                        color = infer_channel_color(mapped_color, i, len(actual_channels))
+                # Priority 2: If no color from XML, try to infer from channel name
+                if color is None:
+                    final_name = biomarker if biomarker else name
+                    if final_name:
+                        fluor_map = {
+                            'dapi': '#0000FF',
+                            'fitc': '#00FF00', # Pure Green
+                            'cy3': '#FF0000',
+                            'cy5': '#FF00FF', # Magenta
+                            'texas red': '#FF0000'
+                        }
+                        mapped_color = fluor_map.get(final_name.lower())
+                        if mapped_color:
+                            color = infer_channel_color(mapped_color, i, len(actual_channels))
 
-                # Second priority: check the Color tag in the XML, if not already set
-                if color is None and comment and 'Color' in xml_metadata:
-                    rgb_str = xml_metadata['Color']
-                    try:
-                        r, g, b = [int(c) for c in rgb_str.split(',')]
-                        color_int = (r << 16) + (g << 8) + b
-                        color = infer_channel_color(color_int, i, len(actual_channels))
-                    except (ValueError, IndexError):
-                        pass
-
-                # Final fallback: index-based color
+                # Priority 3: Final fallback to index-based color
                 if color is None:
                     color = infer_channel_color(None, i, len(actual_channels))
                 
@@ -202,6 +203,8 @@ class QPTiffParser(AbstractParser):
         # Extract metadata from first channel's XML
         comment = self._get_ifd_comment(page)
         if comment:
+            # Use a simple parsing for known, top-level metadata.
+            # More complex parsing is done in parse_raw_metadata.
             xml_metadata = self._parse_xml_metadata(comment)
             if 'Objective' in xml_metadata:
                 try:
@@ -218,6 +221,8 @@ class QPTiffParser(AbstractParser):
                 imd.operator_name = xml_metadata['OperatorName']
             if 'SampleDescription' in xml_metadata:
                 imd.description = xml_metadata['SampleDescription']
+            if 'AcquisitionSoftware' in xml_metadata:
+                imd.microscope.model = xml_metadata['AcquisitionSoftware']
 
         # Find and process associated images (thumbnail, label, macro)
         for idx, ifd in enumerate(tf.pages):
@@ -249,12 +254,24 @@ class QPTiffParser(AbstractParser):
             if comment:
                 try:
                     root = etree.fromstring(comment.encode('utf-8'))
-                    for element in root.iter():
-                        if element.text:
-                            store.set(f"IFD{i}_{element.tag}", element.text.strip(), namespace="QPTIFF")
+                    for element in root:
+                        tag = element.tag
+                        value = element.text.strip() if element.text else None
+                        
+                        # Store top-level simple elements
+                        if value:
+                            store.set(f"QPTIFF.IFD{i}.{tag}", value)
+
+                        # Store children of complex elements (like CameraSettings)
+                        for child in element:
+                            child_tag = child.tag
+                            child_value = child.text.strip() if child.text else None
+                            if child_value:
+                                store.set(f"QPTIFF.IFD{i}.{tag}.{child_tag}", child_value)
+
                 except etree.XMLSyntaxError:
-                    # Fallback: store raw comment
-                    store.set(f"IFD{i}_raw_comment", comment, namespace="QPTIFF")
+                    # Fallback for non-XML or malformed comments
+                    store.set(f"QPTIFF.IFD{i}.RawComment", comment)
         return store
 
     def parse_pyramid(self) -> Pyramid:
