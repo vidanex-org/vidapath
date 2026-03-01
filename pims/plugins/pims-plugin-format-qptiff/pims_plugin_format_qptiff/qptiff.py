@@ -319,14 +319,16 @@ class QPTiffParser(AbstractParser):
 class QPTiffReader(AbstractReader):
     """
     Reader for QPTiff images.
-    It uses pyvips to read pixel data, returning raw, unscaled VIPSImage objects.
+    It uses pyvips to read pixel data.
     """
 
     def _read_and_process_bands(
-        self, page_indices: List[int], region: Region, out_width: int, out_height: int
+        self, page_indices: List[int], region: Region, out_width: int, out_height: int,
+        scale_intensity: bool = False
     ) -> VIPSImage:
         """
-        Core helper to read, join, crop, and resize image bands without scaling intensity.
+        Core helper to read, join, and process image bands.
+        Includes optional intensity scaling for thumbnail generation.
         """
         bands = []
         for page_index in page_indices:
@@ -343,6 +345,12 @@ class QPTiffReader(AbstractReader):
 
         # Join bands into a single image
         image = bandjoin(bands) if len(bands) > 1 else bands[0]
+
+        # Perform auto-scaling of intensity for grayscale-based images if requested
+        if scale_intensity:
+            # Only apply scaling to grayscale-based images, as RGB-like images may display correctly by default.
+            if self.format.main_imd.n_samples == 1 and image.format != 'uchar':
+                image = image.cast('float').scale().cast('uchar')
         
         # Crop the image to the requested region
         img_region = image.crop(region.left, region.top, region.width, region.height)
@@ -374,7 +382,10 @@ class QPTiffReader(AbstractReader):
         
         page_indices = [page_start_index + channel for channel in c]
         
-        return self._read_and_process_bands(page_indices, region, out_width, out_height)
+        # For read_window, return raw, unscaled data.
+        return self._read_and_process_bands(
+            page_indices, region, out_width, out_height, scale_intensity=False
+        )
 
     def read_thumb(
         self, out_width: int, out_height: int, precomputed: bool = None,
@@ -384,7 +395,7 @@ class QPTiffReader(AbstractReader):
         """
         Read a thumbnail of the image.
         Tries to use a precomputed thumbnail if available, otherwise generates
-        it from the lowest-resolution pyramid level.
+        it from the lowest-resolution pyramid level. Always scales intensity.
         """
         # 1. Try to read precomputed thumbnail
         if precomputed is not False:
@@ -398,7 +409,9 @@ class QPTiffReader(AbstractReader):
                         image_type = xml_metadata.get('ImageType', '').lower()
                         if image_type in ['thumbnail', 'thumb']:
                             region = Region(0, 0, thumb_meta.width, thumb_meta.height)
-                            return self._read_and_process_bands([idx], region, out_width, out_height)
+                            return self._read_and_process_bands(
+                                [idx], region, out_width, out_height, scale_intensity=True
+                            )
 
         if precomputed:
             raise ValueError("Precomputed thumbnail requested but not found.")
@@ -408,7 +421,20 @@ class QPTiffReader(AbstractReader):
         if len(pyramid) > 0:
             lowest_tier = list(pyramid)[-1]
             region = Region(0, 0, lowest_tier.width, lowest_tier.height)
-            return self.read_window(region, out_width, out_height, c, z, t)
+            
+            # For thumbnails, use default channel 0 if not specified
+            channels = c
+            if channels is None:
+                channels = [0]
+            elif isinstance(channels, int):
+                channels = [channels]
+
+            page_start_index = lowest_tier.data['page_index']
+            page_indices = [page_start_index + channel for channel in channels]
+            
+            return self._read_and_process_bands(
+                page_indices, region, out_width, out_height, scale_intensity=True
+            )
 
         raise RuntimeError("Could not generate thumbnail: no pyramid and no precomputed thumbnail found.")
 
@@ -417,6 +443,7 @@ class QPTiffReader(AbstractReader):
         c: Optional[Union[int, List[int]]] = None, z: Optional[int] = None, t: Optional[int] = None,
         **kwargs
     ) -> VIPSImage:
+        # Tiles should return raw, unscaled data, like read_window.
         return self.read_window(tile, tile.width, tile.height, c, z, t)
 
 
