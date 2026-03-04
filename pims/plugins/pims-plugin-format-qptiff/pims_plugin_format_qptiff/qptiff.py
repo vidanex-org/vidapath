@@ -5,6 +5,7 @@ from pyvips import Image as VIPSImage
 from typing import Optional, Union, List
 from lxml import etree
 from tifffile import TiffFile
+from datetime import datetime
 
 from pims.utils import UNIT_REGISTRY
 from pims.processing.region import Region, Tile
@@ -58,14 +59,26 @@ class QPTiffParser(AbstractParser):
     def _parse_xml_metadata(self, xml_string: str) -> dict:
         if not xml_string:
             return {}
+
+        def recurse_xml(element, path="", metadata=None):
+            if metadata is None:
+                metadata = {}
+            
+            key = f"{path}.{element.tag}" if path else element.tag
+
+            if element.text and element.text.strip():
+                metadata[key] = element.text.strip()
+
+            for child in element:
+                recurse_xml(child, path=key, metadata=metadata)
+            
+            return metadata
+
         try:
             root = etree.fromstring(xml_string.encode('utf-8'))
-            metadata = {}
-            for element in root.iter():
-                if element.text:
-                    metadata[element.tag] = element.text.strip()
-            return metadata
+            return recurse_xml(root)
         except etree.XMLSyntaxError:
+            logger.warning("Failed to parse QPTIFF XML metadata.")
             return {}
 
     def parse_main_metadata(self) -> ImageMetadata:
@@ -78,12 +91,42 @@ class QPTiffParser(AbstractParser):
         imd.pixel_type = page.dtype
         imd.n_samples = page.samplesperpixel
         
+        # The root tag of the XML description
+        root_key = 'PerkinElmer-QPI-ImageDescription'
+
         # Handle multi-channel grayscale images vs RGB images
         if page.samplesperpixel > 1:
             imd.n_concrete_channels = 1
+            
+            # For RGB, parse metadata from the first page's XML
+            comment = self._get_ifd_comment(page)
+            gain = None
+            exposure_time = None
+            if comment:
+                xml_metadata = self._parse_xml_metadata(comment)
+                gain_key_1 = f"{root_key}.CameraSettings.Gain"
+                gain_key_2 = f"{root_key}.ScanProfile.root.CameraSettings.Gain"
+                exposure_key = f"{root_key}.ExposureTime"
+
+                if gain_key_1 in xml_metadata:
+                    try: gain = float(xml_metadata[gain_key_1])
+                    except (ValueError, TypeError): pass
+                elif gain_key_2 in xml_metadata:
+                    try: gain = float(xml_metadata[gain_key_2])
+                    except (ValueError, TypeError): pass
+                
+                if exposure_key in xml_metadata:
+                    try: exposure_time = UNIT_REGISTRY.Quantity(float(xml_metadata[exposure_key]), 'microsecond')
+                    except (ValueError, TypeError): pass
+
             colors = [infer_channel_color(None, i, imd.n_samples) for i in range(imd.n_samples)]
             for i in range(imd.n_samples):
-                 imd.set_channel(ImageChannel(index=i, suggested_name=['R','G','B'][i], color=colors[i]))
+                ch = ImageChannel(index=i, suggested_name=['R','G','B'][i], color=colors[i])
+                if gain is not None:
+                    ch.gain = gain
+                if exposure_time is not None:
+                    ch.exposure_time = exposure_time
+                imd.set_channel(ch)
 
         else:
             # Case 2: Multiple pages with 1 sample per pixel - multi-channel grayscale images
@@ -94,20 +137,18 @@ class QPTiffParser(AbstractParser):
                 comment = self._get_ifd_comment(ifd)
                 if comment:
                     xml_metadata = self._parse_xml_metadata(comment)
-                    if 'ImageType' in xml_metadata:
-                        img_type = xml_metadata['ImageType']
+                    image_type_key = f"{root_key}.ImageType"
+                    if image_type_key in xml_metadata:
+                        img_type = xml_metadata[image_type_key]
                         # Skip if this is a special image type (not a regular channel)
                         if img_type in ['Thumbnail', 'Label', 'Macro', 'Overview']:
                             continue
                 
                 # Check if this IFD has the same dimensions as the main page (indicating it's a channel)
                 if ifd.imagewidth == page.imagewidth and ifd.imagelength == page.imagelength:
-                    # Additional check: if this page has samplesperpixel > 1, it might be a multichannel RGB page
-                    # But since we're in the else branch, the first page had samplesperpixel = 1
                     actual_channels.append(idx)
                 else:
                     # Once we encounter a different sized image, we can stop checking
-                    # since pyramid levels and other images typically come after all channels
                     break
             
             # Limit to max 3 channels to prevent index out of bounds errors
@@ -117,64 +158,77 @@ class QPTiffParser(AbstractParser):
             
             # Process each identified channel
             for i, channel_idx in enumerate(actual_channels):
-                # Get the current IFD
                 if channel_idx >= len(tf.pages):
-                    continue  # Skip if index is out of bounds
+                    continue
                 channel_ifd = tf.pages[channel_idx]
-                
-                # Get comment for this channel
                 comment = self._get_ifd_comment(channel_ifd)
                 
-                color = None
-                name = None
-                biomarker = None
+                color, name, biomarker, gain, exposure_time = None, None, None, None, None
                 
                 if comment:
                     xml_metadata = self._parse_xml_metadata(comment)
-                    if 'Biomarker' in xml_metadata and xml_metadata['Biomarker']:
-                        biomarker = xml_metadata['Biomarker']
-                        if 'Name' in xml_metadata and xml_metadata['Name']:
-                            name = xml_metadata['Name']
-                    elif 'Name' in xml_metadata and xml_metadata['Name']:
-                        name = xml_metadata['Name']
+                    
+                    # Define full keys
+                    biomarker_key = f"{root_key}.Biomarker"
+                    name_key = f"{root_key}.Name"
+                    gain_key = f"{root_key}.CameraSettings.Gain"
+                    exposure_key = f"{root_key}.ExposureTime"
+                    color_key = f"{root_key}.Color"
 
-                    # Priority 1: Use the <Color> tag from the file's metadata if it exists.
-                    if 'Color' in xml_metadata:
-                        rgb_str = xml_metadata['Color']
+                    if biomarker_key in xml_metadata and xml_metadata[biomarker_key]:
+                        biomarker = xml_metadata[biomarker_key]
+                        if name_key in xml_metadata and xml_metadata[name_key]:
+                            name = xml_metadata[name_key]
+                    elif name_key in xml_metadata and xml_metadata[name_key]:
+                        name = xml_metadata[name_key]
+
+                    gain_key_1 = f"{root_key}.CameraSettings.Gain"
+                    gain_key_2 = f"{root_key}.ScanProfile.root.CameraSettings.Gain"
+                    if gain_key_1 in xml_metadata:
                         try:
-                            r, g, b = [int(c) for c in rgb_str.split(',')]
-                            # Pass the tuple directly, as infer_channel_color can handle it.
-                            # This avoids incorrect integer conversion.
-                            color = infer_channel_color((r, g, b), i, len(actual_channels))
-                        except (ValueError, IndexError):
-                            pass
+                            gain = float(xml_metadata[gain_key_1])
+                        except (ValueError, TypeError): pass
+                    elif gain_key_2 in xml_metadata:
+                        try:
+                            gain = float(xml_metadata[gain_key_2])
+                        except (ValueError, TypeError): pass
 
-                # Priority 2: If no color from XML, try to infer from channel name
+                    if exposure_key in xml_metadata:
+                        try:
+                            exposure_time = UNIT_REGISTRY.Quantity(float(xml_metadata[exposure_key]), 'microsecond')
+                        except (ValueError, TypeError): pass
+
+                    if color_key in xml_metadata:
+                        try:
+                            r, g, b = [int(c) for c in xml_metadata[color_key].split(',')]
+                            color = infer_channel_color((r, g, b), i, len(actual_channels))
+                        except (ValueError, IndexError): pass
+
                 if color is None:
                     final_name = biomarker if biomarker else name
                     if final_name:
                         fluor_map = {
-                            'dapi': '#0000FF',
-                            'fitc': '#00FF00', # Pure Green
-                            'cy3': '#FF0000',
-                            'cy5': '#FF00FF', # Magenta
-                            'texas red': '#FF0000'
+                            'dapi': '#0000FF', 'fitc': '#00FF00', 'cy3': '#FF0000',
+                            'cy5': '#FF00FF', 'texas red': '#FF0000'
                         }
-                        mapped_color = fluor_map.get(final_name.lower())
+                        mapped_color = fluor_map.get(str(final_name).lower())
                         if mapped_color:
                             color = infer_channel_color(mapped_color, i, len(actual_channels))
 
-                # Priority 3: Final fallback to index-based color
                 if color is None:
                     color = infer_channel_color(None, i, len(actual_channels))
                 
-                # Create channel with appropriate name
                 if biomarker:
                     ch = ImageChannel(index=i, suggested_name=biomarker, color=color)
                     ch.fluor_name = name
                 else:
                     ch = ImageChannel(index=i, suggested_name=name, color=color)
                 
+                if gain is not None:
+                    ch.gain = gain
+                if exposure_time is not None:
+                    ch.exposure_time = exposure_time
+
                 imd.set_channel(ch)
 
         return imd
@@ -197,81 +251,83 @@ class QPTiffParser(AbstractParser):
             y_res = page.tags['YResolution'].value
 
             # The value is pixels per resolution unit. We want unit per pixel.
-            # For rationals (numerator, denominator), tifffile stores it as (value, 1), but it should be (pixels, unit_den), so we invert.
             if hasattr(x_res, '__len__') and len(x_res) >= 2:
-                # size = denominator / numerator
                 size_x = x_res[1] / x_res[0]
                 imd.physical_size_x = UNIT_REGISTRY.Quantity(size_x, unit).to('micrometer')
-            elif isinstance(x_res, (int, float)):
-                # size = 1 / pixels_per_unit
-                if x_res > 0:
-                    imd.physical_size_x = UNIT_REGISTRY.Quantity(1.0 / x_res, unit).to('micrometer')
+            elif isinstance(x_res, (int, float)) and x_res > 0:
+                imd.physical_size_x = UNIT_REGISTRY.Quantity(1.0 / x_res, unit).to('micrometer')
 
             if hasattr(y_res, '__len__') and len(y_res) >= 2:
                 size_y = y_res[1] / y_res[0]
                 imd.physical_size_y = UNIT_REGISTRY.Quantity(size_y, unit).to('micrometer')
-            elif isinstance(y_res, (int, float)):
-                if y_res > 0:
-                    imd.physical_size_y = UNIT_REGISTRY.Quantity(1.0 / y_res, unit).to('micrometer')
+            elif isinstance(y_res, (int, float)) and y_res > 0:
+                imd.physical_size_y = UNIT_REGISTRY.Quantity(1.0 / y_res, unit).to('micrometer')
 
-        # Extract metadata from first channel's XML
+        # Extract global metadata from XML
         comment = self._get_ifd_comment(page)
         if comment:
-            # Use a simple parsing for known, top-level metadata.
-            # More complex parsing is done in parse_raw_metadata.
             xml_metadata = self._parse_xml_metadata(comment)
+            root_key = 'PerkinElmer-QPI-ImageDescription'
 
-            # Fallback to XML for physical size if not found in TIFF tags.
-            # We assume 'micrometer' as the unit if not specified, which is a common case.
-            if imd.physical_size_x is None and 'PhysicalSizeX' in xml_metadata:
+            # Fallback for physical size from MsiResolution in XML
+            key = f"{root_key}.ScanProfile.root.MsiResolution.PixelSizeMicrons"
+            if imd.physical_size_x is None and key in xml_metadata:
                 try:
-                    size_x = float(xml_metadata['PhysicalSizeX'])
-                    unit = xml_metadata.get('PhysicalSizeXUnit', 'micrometer')
-                    imd.physical_size_x = UNIT_REGISTRY.Quantity(size_x, unit)
+                    size = float(xml_metadata[key])
+                    # This value is already in microns, no conversion needed
+                    imd.physical_size_x = UNIT_REGISTRY.Quantity(size, 'micrometer')
+                    imd.physical_size_y = UNIT_REGISTRY.Quantity(size, 'micrometer') # Assume square pixels
                 except (ValueError, TypeError):
-                    logger.warning("Could not parse PhysicalSizeX from XML metadata.")
-            
-            if imd.physical_size_y is None and 'PhysicalSizeY' in xml_metadata:
-                try:
-                    size_y = float(xml_metadata['PhysicalSizeY'])
-                    unit = xml_metadata.get('PhysicalSizeYUnit', 'micrometer')
-                    imd.physical_size_y = UNIT_REGISTRY.Quantity(size_y, unit)
-                except (ValueError, TypeError):
-                    logger.warning("Could not parse PhysicalSizeY from XML metadata.")
-            
-            if imd.physical_size_z is None and 'PhysicalSizeZ' in xml_metadata:
-                try:
-                    size_z = float(xml_metadata['PhysicalSizeZ'])
-                    unit = xml_metadata.get('PhysicalSizeZUnit', 'micrometer')
-                    imd.physical_size_z = UNIT_REGISTRY.Quantity(size_z, unit)
-                except (ValueError, TypeError):
-                    logger.warning("Could not parse PhysicalSizeZ from XML metadata.")
+                    logger.warning("Could not parse PixelSizeMicrons from XML.")
 
-            if 'Objective' in xml_metadata:
+            key = f"{root_key}.Objective"
+            if key in xml_metadata:
                 try:
-                    mag = float(xml_metadata['Objective'].lower().replace('x',''))
+                    mag = float(xml_metadata[key].lower().replace('x',''))
                     imd.objective.nominal_magnification = mag
-                except (ValueError, TypeError):
-                    pass
-            if 'ExposureTime' in xml_metadata:
+                except (ValueError, TypeError): pass
+            
+            key = f"{root_key}.OperatorName"
+            if key in xml_metadata:
+                imd.operator_name = xml_metadata[key]
+
+            key = f"{root_key}.SampleDescription"
+            if key in xml_metadata:
+                imd.description = xml_metadata[key]
+
+            key = f"{root_key}.AcquisitionSoftware"
+            if key in xml_metadata:
+                imd.microscope.model = xml_metadata[key]
+
+        # Standard TIFF tags as fallbacks
+        if 'DateTime' in page.tags:
+            if not imd.acquisition_datetime:
                 try:
-                    imd.exposure_time = UNIT_REGISTRY.Quantity(float(xml_metadata['ExposureTime']), 'microsecond')
+                    dt_str = page.tags['DateTime'].value
+                    imd.acquisition_datetime = datetime.strptime(dt_str, '%Y:%m:%d %H:%M:%S')
                 except (ValueError, TypeError):
-                    pass
-            if 'OperatorName' in xml_metadata:
-                imd.operator_name = xml_metadata['OperatorName']
-            if 'SampleDescription' in xml_metadata:
-                imd.description = xml_metadata['SampleDescription']
-            if 'AcquisitionSoftware' in xml_metadata:
-                imd.microscope.model = xml_metadata['AcquisitionSoftware']
+                    logger.warning("Could not parse DateTime tag.")
+        
+        if 'Artist' in page.tags:
+            if not imd.operator_name:
+                imd.operator_name = page.tags['Artist'].value
+
+        if 'Make' in page.tags:
+            if not imd.microscope.manufacturer:
+                imd.microscope.manufacturer = page.tags['Make'].value
+        
+        if 'Model' in page.tags:
+            if not imd.microscope.model:
+                imd.microscope.model = page.tags['Model'].value
 
         # Find and process associated images (thumbnail, label, macro)
         for idx, ifd in enumerate(tf.pages):
             comment = self._get_ifd_comment(ifd)
             if comment:
                 xml_metadata = self._parse_xml_metadata(comment)
-                if 'ImageType' in xml_metadata:
-                    image_type = xml_metadata['ImageType']
+                key = 'PerkinElmer-QPI-ImageDescription.ImageType'
+                if key in xml_metadata:
+                    image_type = xml_metadata[key]
                     associated = None
                     if image_type.lower() in ['thumbnail', 'thumb']:
                         associated = imd.associated_thumb
@@ -284,6 +340,7 @@ class QPTiffParser(AbstractParser):
                         associated.width = ifd.imagewidth
                         associated.height = ifd.imagelength
                         associated.n_channels = ifd.samplesperpixel
+                        associated.page_index = idx
 
         return imd
 
@@ -304,6 +361,15 @@ class QPTiffParser(AbstractParser):
                 recurse_xml(child, path=key, store=store)
 
         for i, ifd in enumerate(tf.pages):
+            # Store PhotometricInterpretation if it exists
+            if 'PhotometricInterpretation' in ifd.tags:
+                try:
+                    # The value is an enum member, so we get its name
+                    value = ifd.tags['PhotometricInterpretation'].value.name
+                    store.set(f"TIFF.IFD{i}.PhotometricInterpretation", value)
+                except:
+                    pass # Ignore if we cannot get the name
+
             comment = self._get_ifd_comment(ifd)
             if comment:
                 try:
@@ -437,21 +503,15 @@ class QPTiffReader(AbstractReader):
         Tries to use a precomputed thumbnail if available, otherwise generates
         it from the lowest-resolution pyramid level. Always scales intensity.
         """
-        # 1. Try to read precomputed thumbnail
+        # 1. Try to read precomputed thumbnail by explicitly running the known metadata parser
         if precomputed is not False:
+            # We run the parser to be sure associated images are populated.
             thumb_meta = self.format.parser.parse_known_metadata().associated_thumb
-            if thumb_meta and thumb_meta.width and thumb_meta.height:
-                tf = cached_qptiff_file(self.format)
-                for idx, page in enumerate(tf.pages):
-                    comment = self.format.parser._get_ifd_comment(page)
-                    if comment:
-                        xml_metadata = self.format.parser._parse_xml_metadata(comment)
-                        image_type = xml_metadata.get('ImageType', '').lower()
-                        if image_type in ['thumbnail', 'thumb']:
-                            region = Region(0, 0, thumb_meta.width, thumb_meta.height)
-                            return self._read_and_process_bands(
-                                [idx], region, out_width, out_height, scale_intensity=True
-                            )
+            if hasattr(thumb_meta, 'page_index'):
+                region = Region(0, 0, thumb_meta.width, thumb_meta.height)
+                return self._read_and_process_bands(
+                    [thumb_meta.page_index], region, out_width, out_height, scale_intensity=True
+                )
 
         if precomputed:
             raise ValueError("Precomputed thumbnail requested but not found.")
