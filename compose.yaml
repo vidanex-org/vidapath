@@ -124,11 +124,13 @@ services:
       KC_HOSTNAME: demo4.viewer.vidanex.com
       KC_HOSTNAME_ADMIN: demo4.viewer.vidanex.com
       KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_BACKCHANNEL: true
+      KC_HOSTNAME_STRICT_BACKCHANNEL: false
       KC_HOSTNAME_STRICT_HTTPS: true
       KC_HTTP_RELATIVE_PATH: /iam
       KC_HTTP_ENABLED: true
       KC_PROXY_HEADERS: xforwarded
+      KC_PROXY_ADDRESS_FORWARDING: true
+      KC_TRUSTED_PROXIES: "*"
       KC_SMTP_FROM: mail@mail.com
       KC_SMTP_HOST: mail.smtp
       KC_SMTP_PASS: password
