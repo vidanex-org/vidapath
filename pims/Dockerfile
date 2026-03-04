@@ -94,7 +94,8 @@ COPY ./pims/pyproject.toml ./pims/uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
 
-RUN python plugins.py \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    python plugins.py \
     --plugin_csv /app/plugins.csv \
     --install_path ${PLUGIN_INSTALL_PATH} \
     --method install && \
