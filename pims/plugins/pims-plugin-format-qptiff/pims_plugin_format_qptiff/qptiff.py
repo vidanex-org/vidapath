@@ -186,19 +186,33 @@ class QPTiffParser(AbstractParser):
         # General metadata from first IFD
         page = tf.pages[0]
         if 'XResolution' in page.tags and 'YResolution' in page.tags:
+            # According to TIFF spec, 1=None, 2=Inch, 3=Centimeter
+            resolution_unit_map = {2: 'inch', 3: 'cm'}
+            unit = 'micrometer'  # Default unit if ResolutionUnit is not specified or is 1
+            if 'ResolutionUnit' in page.tags:
+                res_unit_val = page.tags['ResolutionUnit'].value
+                unit = resolution_unit_map.get(res_unit_val, unit)
+
             x_res = page.tags['XResolution'].value
             y_res = page.tags['YResolution'].value
-            
-            # Calculate physical sizes (tifffile stores as rationals)
+
+            # The value is pixels per resolution unit. We want unit per pixel.
+            # For rationals (numerator, denominator), tifffile stores it as (value, 1), but it should be (pixels, unit_den), so we invert.
             if hasattr(x_res, '__len__') and len(x_res) >= 2:
-                imd.physical_size_x = UNIT_REGISTRY.Quantity(x_res[1] / x_res[0], 'micrometer')
+                # size = denominator / numerator
+                size_x = x_res[1] / x_res[0]
+                imd.physical_size_x = UNIT_REGISTRY.Quantity(size_x, unit).to('micrometer')
             elif isinstance(x_res, (int, float)):
-                imd.physical_size_x = UNIT_REGISTRY.Quantity(1.0 / x_res, 'micrometer') if x_res != 0 else None
-                
+                # size = 1 / pixels_per_unit
+                if x_res > 0:
+                    imd.physical_size_x = UNIT_REGISTRY.Quantity(1.0 / x_res, unit).to('micrometer')
+
             if hasattr(y_res, '__len__') and len(y_res) >= 2:
-                imd.physical_size_y = UNIT_REGISTRY.Quantity(y_res[1] / y_res[0], 'micrometer')
+                size_y = y_res[1] / y_res[0]
+                imd.physical_size_y = UNIT_REGISTRY.Quantity(size_y, unit).to('micrometer')
             elif isinstance(y_res, (int, float)):
-                imd.physical_size_y = UNIT_REGISTRY.Quantity(1.0 / y_res, 'micrometer') if y_res != 0 else None
+                if y_res > 0:
+                    imd.physical_size_y = UNIT_REGISTRY.Quantity(1.0 / y_res, unit).to('micrometer')
 
         # Extract metadata from first channel's XML
         comment = self._get_ifd_comment(page)
@@ -206,6 +220,33 @@ class QPTiffParser(AbstractParser):
             # Use a simple parsing for known, top-level metadata.
             # More complex parsing is done in parse_raw_metadata.
             xml_metadata = self._parse_xml_metadata(comment)
+
+            # Fallback to XML for physical size if not found in TIFF tags.
+            # We assume 'micrometer' as the unit if not specified, which is a common case.
+            if imd.physical_size_x is None and 'PhysicalSizeX' in xml_metadata:
+                try:
+                    size_x = float(xml_metadata['PhysicalSizeX'])
+                    unit = xml_metadata.get('PhysicalSizeXUnit', 'micrometer')
+                    imd.physical_size_x = UNIT_REGISTRY.Quantity(size_x, unit)
+                except (ValueError, TypeError):
+                    logger.warning("Could not parse PhysicalSizeX from XML metadata.")
+            
+            if imd.physical_size_y is None and 'PhysicalSizeY' in xml_metadata:
+                try:
+                    size_y = float(xml_metadata['PhysicalSizeY'])
+                    unit = xml_metadata.get('PhysicalSizeYUnit', 'micrometer')
+                    imd.physical_size_y = UNIT_REGISTRY.Quantity(size_y, unit)
+                except (ValueError, TypeError):
+                    logger.warning("Could not parse PhysicalSizeY from XML metadata.")
+            
+            if imd.physical_size_z is None and 'PhysicalSizeZ' in xml_metadata:
+                try:
+                    size_z = float(xml_metadata['PhysicalSizeZ'])
+                    unit = xml_metadata.get('PhysicalSizeZUnit', 'micrometer')
+                    imd.physical_size_z = UNIT_REGISTRY.Quantity(size_z, unit)
+                except (ValueError, TypeError):
+                    logger.warning("Could not parse PhysicalSizeZ from XML metadata.")
+
             if 'Objective' in xml_metadata:
                 try:
                     mag = float(xml_metadata['Objective'].lower().replace('x',''))
@@ -249,26 +290,25 @@ class QPTiffParser(AbstractParser):
     def parse_raw_metadata(self) -> MetadataStore:
         store = MetadataStore()
         tf = cached_qptiff_file(self.format)
+
+        def recurse_xml(element, path, store):
+            # Construct the key path
+            key = f"{path}.{element.tag}" if path else element.tag
+
+            # If the element has text, store it.
+            if element.text and element.text.strip():
+                store.set(key, element.text.strip())
+
+            # Recurse for children
+            for child in element:
+                recurse_xml(child, path=key, store=store)
+
         for i, ifd in enumerate(tf.pages):
             comment = self._get_ifd_comment(ifd)
             if comment:
                 try:
                     root = etree.fromstring(comment.encode('utf-8'))
-                    for element in root:
-                        tag = element.tag
-                        value = element.text.strip() if element.text else None
-                        
-                        # Store top-level simple elements
-                        if value:
-                            store.set(f"QPTIFF.IFD{i}.{tag}", value)
-
-                        # Store children of complex elements (like CameraSettings)
-                        for child in element:
-                            child_tag = child.tag
-                            child_value = child.text.strip() if child.text else None
-                            if child_value:
-                                store.set(f"QPTIFF.IFD{i}.{tag}.{child_tag}", child_value)
-
+                    recurse_xml(root, path=f"QPTIFF.IFD{i}", store=store)
                 except etree.XMLSyntaxError:
                     # Fallback for non-XML or malformed comments
                     store.set(f"QPTIFF.IFD{i}.RawComment", comment)
