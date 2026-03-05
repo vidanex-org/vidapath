@@ -90,8 +90,8 @@ services:
       API_BASE_PATH: ${IMS_API_BASE_PATH:-/ims}
       CACHE_ENABLED: true
       CACHE_URL: redis://pims-cache:6379
-      CYTOMINE_PRIVATE_KEY: 325cfc4a-b758-44b1-b32c-83d7ab5840ca
-      CYTOMINE_PUBLIC_KEY: 3ce6b747-edf1-425f-b8b2-727a2fdace20
+      CYTOMINE_PRIVATE_KEY: 4e5d6a9c-fbfa-43b4-9ddb-662fb5f07f78
+      CYTOMINE_PUBLIC_KEY: 1c5c0e34-f4fa-4b09-98c8-094e2cd9e1cb
       DATASET_PATH: /dataset
       DEFAULT_ANNOTATION_ORIGIN: LEFT_TOP
       DEFAULT_IMAGE_SIZE_SAFETY_MODE: SAFE_REJECT
@@ -121,8 +121,8 @@ services:
       KC_DB_URL_HOST: postgis
       KC_DB_URL_PORT: 5432
       KC_DB_USERNAME: iam
-      KC_HOSTNAME: demo4.viewer.vidanex.com
-      KC_HOSTNAME_ADMIN: demo4.viewer.vidanex.com
+      KC_HOSTNAME: ummc.viewer.vidanex.com
+      KC_HOSTNAME_ADMIN: ummc.viewer.vidanex.com
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_BACKCHANNEL: true
       KC_HOSTNAME_STRICT_HTTPS: true
@@ -185,7 +185,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime
     environment:
-      SERVER_URL: https://demo4.viewer.vidanex.com
+      SERVER_URL: https://ummc.viewer.vidanex.com
       IMAGE_SERVER_PRIVATE_KEY: d70607f5-c478-403c-be11-3dbc1716d1cf
       IMAGE_SERVER_PUBLIC_KEY: 9a8b8369-2446-44cb-b0af-604a74e1dcdb
       IAM_URL: http://nginx
