@@ -433,7 +433,30 @@
     },
     "notBefore" : 0,
     "groups" : [ ]
-  } ],
+  },
+    {
+      "username": "looilm@ummc.edu.my",
+      "firstName": "Looi Lai",
+      "lastName": "Meng",
+      "email": "looilm@ummc.edu.my",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD"],
+      "realmRoles" : [ "default-roles-cytomine" ],
+      "clientRoles" : {
+        "core" : [ "ADMIN" ],
+        "realm-management" : [ "view-realm", "realm-admin", "view-authorization", "query-groups", "manage-identity-providers", "manage-events", "query-realms", "view-events", "query-clients" ],
+        "broker" : [ "read-token" ],
+        "account" : [ "view-applications", "view-groups", "manage-consent", "manage-account", "view-consent", "view-profile", "manage-account-links", "delete-account" ]
+      }
+    } ],
   "scopeMappings" : [ {
     "clientScope" : "offline_access",
     "roles" : [ "offline_access" ]
