@@ -33,7 +33,7 @@ spring:
             jwk-set-uri: ${INTERNAL_PROXY_URL:http://nginx}/iam/realms/vidapath/.well-known/openid-configuration
       resourceserver:
         jwt:
-          issuer-uri: ${SERVER_URL:https://demo4.viewer.vidanex.com}/iam/realms/vidapath
+          issuer-uri: ${SERVER_URL:https://ummc.viewer.vidanex.com}/iam/realms/vidapath
           jws-algorithms: RS256
           jwk-set-uri: ${INTERNAL_PROXY_URL:http://nginx}/iam/realms/vidapath/protocol/openid-connect/certs
 
