@@ -433,7 +433,508 @@
     },
     "notBefore" : 0,
     "groups" : [ ]
-  } ],
+  },
+  {
+        "username": "sfchiew@ummc.edu.my",
+        "firstName": "Seow Fan",
+        "lastName": "Chiew",
+        "email": "sfchiew@ummc.edu.my",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "manfong@ummc.edu.my",
+        "firstName": "Man Fong",
+        "lastName": "Chew",
+        "email": "manfong@ummc.edu.my",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "tkchow@ummc.edu.my",
+        "firstName": "Tak Kuan",
+        "lastName": "Chow",
+        "email": "tkchow@ummc.edu.my",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "diana.ong@ummc.edu.my",
+        "firstName": "Diana Bee Lan",
+        "lastName": "Ong",
+        "email": "diana.ong@ummc.edu.my",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "nazarina@ummc.edu.my",
+        "firstName": "Nazarina",
+        "lastName": "Abdul Rahman",
+        "email": "nazarina@ummc.edu.my",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "ksmun@ummc.edu.my",
+        "firstName": "kein Seong",
+        "lastName": "Mun",
+        "email": "ksmun@ummc.edu.my",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "looilm@ummc.edu.my",
+        "firstName": "Lai Meng",
+        "lastName": "Looi",
+        "email": "looilm@ummc.edu.my",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "mopathum@gmail.com",
+        "firstName": "MO Pathology",
+        "lastName": "Department",
+        "email": "mopathum@gmail.com",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "corelabummc@gmail.com",
+        "firstName": "Core",
+        "lastName": "Lab",
+        "email": "corelabummc@gmail.com",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    },
+    {
+        "username": "phang@ummc.edu.my",
+        "firstName": "Kean Chang",
+        "lastName": "Phang",
+        "email": "phang@ummc.edu.my",
+        "emailVerified": true,
+        "enabled": true,
+        "credentials": [
+            {
+                "type": "password",
+                "value": "password",
+                "temporary": false
+            }
+        ],
+        "requiredActions": [
+            "UPDATE_PASSWORD"
+        ],
+        "realmRoles": [
+            "default-roles-cytomine"
+        ],
+        "clientRoles": {
+            "core": [
+                "ADMIN"
+            ],
+            "realm-management": [
+                "view-realm",
+                "realm-admin",
+                "view-authorization",
+                "query-groups",
+                "manage-identity-providers",
+                "manage-events",
+                "query-realms",
+                "view-events",
+                "query-clients"
+            ],
+            "broker": [
+                "read-token"
+            ],
+            "account": [
+                "view-applications",
+                "view-groups",
+                "manage-consent",
+                "manage-account",
+                "view-consent",
+                "view-profile",
+                "manage-account-links",
+                "delete-account"
+            ]
+        }
+    }
+  ],
   "scopeMappings" : [ {
     "clientScope" : "offline_access",
     "roles" : [ "offline_access" ]
