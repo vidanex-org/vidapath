@@ -14,10 +14,10 @@
 
 <template>
   <div class="card" :class="{ 'full-height-card': fullHeightCard }">
-    <router-link class="card-image recent-image" :to="`/project/${idProject}/image/${idImage}`">
+    <a class="card-image recent-image" @click="handleNavigation">
       <figure class="image is-5by3" :style="figureStyle">
       </figure>
-    </router-link>
+    </a>
     <div class="card-content">
       <div class="content image-info">
         <div class="image-header">
@@ -88,15 +88,31 @@ export default {
     },
     tissue() {
       // Return fixed value for now, can be made dynamic later
-      return 'Breast';
+      return '';
     },
     specimen() {
       // Return fixed value for now, can be made dynamic later
-      return 'Biopsy';
+      return '';
     },
     stain() {
       // Return fixed value for now, can be made dynamic later
-      return 'H&E';
+      return '';
+    }
+  },
+  methods: {
+    handleNavigation() {
+      let groupId = null;
+      const projectTreeState = this.$store.state['project-tree'];
+
+      if (projectTreeState.selectedItemType === 'imageGroup') {
+        groupId = projectTreeState.selectedItem.id;
+      }
+
+      console.log('[DEBUG] ImagePreview Click: Current item type in store:', projectTreeState.selectedItemType);
+      console.log('[DEBUG] ImagePreview Click: Dispatching imageGroup ID:', groupId);
+
+      this.$store.dispatch('project-tree/setActiveImageGroupForViewer', groupId);
+      this.$router.push(`/project/${this.idProject}/image/${this.idImage}`);
     }
   },
 };
@@ -111,6 +127,7 @@ export default {
   background-size: cover;
   position: relative;
   border-bottom: 1px solid $dark-border-color;
+  cursor: pointer;
 }
 
 .card.full-height-card {

@@ -11,6 +11,7 @@ const state = {
   contentLoading: false,
   images: [],
   imageGroups: [],
+  activeImageGroupForViewer: null,
 };
 
 const mutations = {
@@ -59,6 +60,9 @@ const mutations = {
   SET_CONTENT_DATA(state, { images, imageGroups }) {
     state.images = images;
     state.imageGroups = imageGroups;
+  },
+  SET_ACTIVE_IMAGE_GROUP_FOR_VIEWER(state, groupId) {
+    state.activeImageGroupForViewer = groupId;
   },
 };
 
@@ -182,7 +186,11 @@ const actions = {
   findProjectForImageGroup({ state }, imageGroup) {
     const projectId = imageGroup.project;
     return state.projects.find(p => p.id === projectId);
-  }
+  },
+
+  setActiveImageGroupForViewer({ commit }, groupId) {
+    commit('SET_ACTIVE_IMAGE_GROUP_FOR_VIEWER', groupId);
+  },
 };
 
 const getters = {
