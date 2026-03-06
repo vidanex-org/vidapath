@@ -67,7 +67,7 @@ class ReadableSettings(BaseSettings):
     auto_delete_failed_upload: bool = True
 
     # Easy Import Project Name Parsing Configuration
-    easy_import_enable_folder_based: bool = True
+    easy_import_project_name_strategy: str = "folder"
     easy_import_project_name_length: int = 12
     easy_import_project_name_offset: int = 0
 

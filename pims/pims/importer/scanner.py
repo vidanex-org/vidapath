@@ -121,11 +121,12 @@ class AutoImportScanner(threading.Thread):
             
             name_length = self.settings.easy_import_project_name_length
             name_offset = self.settings.easy_import_project_name_offset
-            easy_import_enable_folder_based = self.settings.easy_import_enable_folder_based
+            project_name_strategy = self.settings.easy_import_project_name_strategy
 
             # Create iterator
             file_iterator = iter_importable_files(
-                self.dataset_root, name_offset, name_length, easy_import_enable_folder_based
+                self.dataset_root, name_offset, name_length, 
+                project_name_strategy=project_name_strategy
             )
 
             # Process batch

@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import re
 from pathlib import Path
 from typing import Generator, Tuple, Dict, Any
 from redis import Redis
@@ -53,10 +54,13 @@ class FileImportCache:
 
 
 def iter_importable_files(
-    dataset_root: Path, name_offset: int, name_length: int, easy_import_enable_folder_based: bool = True
+    dataset_root: Path, name_offset: int, name_length: int,
+    project_name_strategy: str = "folder"
 ) -> Generator[Tuple[Path, Path, str], None, None]:
     """
     Iterate over importable files in the dataset directory.
+    This function now processes files in the root directory first, then iterates
+    through subdirectories (buckets).
 
     Yields:
         Tuple[Path, Path, str]: (bucket_path, file_path, project_name)
@@ -65,34 +69,80 @@ def iter_importable_files(
         logger.warning(f"Dataset root '{dataset_root}' does not exist!")
         return
 
+    logger.info(f"Starting scan in root directory: {dataset_root}")
+
     min_required_len = name_offset + name_length
 
-    # Iterate buckets (top-level directories in dataset root)
+    # Blacklist of extensions and name patterns that should not be processed as images.
+    INVALID_PATTERNS = ['.json', '.xml', '.txt', '.md', '.pdf', '.docx', '.xlsx', '.mip', 'dsmeta.zip', '.dsmeta']
+
+    # New, more flexible regex for the 'pattern' strategy.
+    # It looks for Prefix(1-2 letters), Year(4 digits), optional separator, and Case ID(4-5 digits).
+    pattern_regex = re.compile(r"([A-Z]{1,2})(\d{4})([-_]?)(\d{4,5})")
+
+    def get_project_name(strategy: str, file_path: Path) -> str or None:
+        """Helper function to determine project name based on strategy."""
+        stem = file_path.stem
+        if strategy == 'folder':
+            return file_path.parent.name
+        elif strategy == 'substring':
+            if len(stem) < min_required_len:
+                logger.info(f"Skipping '{file_path}' - name too short for substring strategy (Required: {min_required_len}, Actual: {len(stem)}).")
+                return None
+            return stem[name_offset : name_offset + name_length]
+        elif strategy == 'pattern':
+            match = pattern_regex.search(stem)
+            if match:
+                # Build the project name preserving the original separator
+                # group(3) will be '-', '_', or ''
+                return f"{match.group(1)}{match.group(2)}{match.group(3)}{match.group(4)}"
+            else:
+                logger.info(f"Skipping '{file_path}' - does not match pattern strategy.")
+                return None
+        else:
+            logger.warning(f"Unknown project_name_strategy: {strategy}. Skipping file '{file_path}'")
+            return None
+
+    def is_invalid_file_type(file_path: Path) -> bool:
+        """Helper to check if a file has a disallowed extension or name pattern."""
+        lower_name = file_path.name.lower()
+        if any(lower_name.endswith(pattern) for pattern in INVALID_PATTERNS):
+            logger.info(f"Skipping '{file_path}' - file name/type is on the deny list.")
+            return True
+        return False
+
+    # 1. Process files directly in the root directory
+    logger.info(f"Scanning for files directly in root: {dataset_root}")
+    for entry in os.scandir(dataset_root):
+        if entry.is_file():
+            file_path = Path(entry.path)
+            if file_path.name.startswith('.') or is_invalid_file_type(file_path):
+                continue
+            
+            project_name = get_project_name(project_name_strategy, file_path)
+            if project_name:
+                yield dataset_root, file_path, project_name
+
+    # 2. Process files in subdirectories (buckets)
     for entry in os.scandir(dataset_root):
         if not entry.is_dir():
             continue
 
         bucket = Path(entry.path)
+        logger.info(f"Entering bucket: {bucket}")
 
         # Recursively walk the bucket
         for root, dirs, files in os.walk(bucket):
+            logger.info(f"Scanning directory: {root}")
             for file in files:
                 file_path = Path(root) / file
                 
-                # Exclude hidden files
-                if file.startswith('.'):
+                if file.startswith('.') or is_invalid_file_type(file_path):
                     continue
 
-                if easy_import_enable_folder_based:
-                    project_name = file_path.parent.name
-                else:
-                    stem = file_path.stem
-                    if len(stem) < min_required_len:
-                        logger.debug(f"Skipping '{file_path}' - name too short (Required: {min_required_len}, Actual: {len(stem)}).")
-                        continue
-                    project_name = stem[name_offset : name_offset + name_length]
-                
-                yield bucket, file_path, project_name
+                project_name = get_project_name(project_name_strategy, file_path)
+                if project_name:
+                    yield bucket, file_path, project_name
 
 
 def process_import_batch(
@@ -120,7 +170,7 @@ def process_import_batch(
         # Check if file has already been processed and unchanged
         if not file_cache.should_process(file_path):
             count_skipped += 1
-            logger.debug(f"Skipping '{file_path.name}' (cached, unchanged).")
+            logger.info(f"Skipping '{file_path.name}' (cached, unchanged).")
             continue
 
         logger.info(f"Processing file: {file_path.name} (Project: {project_name})")
