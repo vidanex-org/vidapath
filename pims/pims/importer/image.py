@@ -1,9 +1,9 @@
 import logging
 from lxml import etree
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
-from cytomine.models import UploadedFile
+from cytomine.models import UploadedFile, ImageGroupImageInstance
 
 from pims.config import get_settings
 from pims.importer.importer import run_import
@@ -97,15 +97,16 @@ class ImageImporter:
             results=results,
         )
 
-    def run_easy(self, file_path: Path, projects: List[str]) -> ImportResult:
+    def run_easy(self, file_path: Path, projects: List[str], imagegroup_id: Optional[int] = None) -> ImportResult:
         """
         简化版导入方法，用于导入单个文件
         :param file_path: 要导入的文件路径
         :param projects: 项目列表
+        :param imagegroup_id: 图像组ID (可选)
         :return: 导入结果
         """
         logger.info(f"[START] Importing single image: {file_path.name}")
-        
+
         if not file_path.exists():
             logger.warning(f"'{file_path}' does not exist!")
             return ImportResult(
@@ -157,6 +158,27 @@ class ImageImporter:
                 file_path.name,
                 extra_listeners=[cytomine_listener],
             )
+
+            # After successful import, associate with image group if needed
+            if imagegroup_id:
+                if cytomine_listener.images:
+                    # cytomine_listener.images is a list of tuples (AbstractImage, List[ImageInstance])
+                    # For a single file import, there's only one tuple.
+                    # We associate the first instance with the group.
+                    instances = cytomine_listener.images[0][1]
+                    if instances:
+                        image_instance_id = instances[0].id
+                        logger.info(f"Associating image instance {image_instance_id} with group {imagegroup_id}")
+                        try:
+                            ImageGroupImageInstance(
+                                id_image_group=imagegroup_id,
+                                id_image_instance=image_instance_id
+                            ).save()
+                        except Exception as e:
+                            logger.error(f"Failed to associate image instance {image_instance_id} with group {imagegroup_id}: {e}")
+                            # Do not fail the whole import, just log the error
+                else:
+                    logger.warning(f"Import of {file_path.name} was successful but could not find created image instance to associate with group.")
 
             logger.info(f"[END] Importing single image: {file_path.name}")
             return ImportResult(name=file_path.name, success=True)
