@@ -172,10 +172,15 @@ class FileImporter:
             self.mkdir(self.upload_dir)
 
             if self.pending_name:
-                name = self.pending_name
+                original_name = self.pending_name
             else:
-                name = self.pending_file.name
-            self.upload_path = self.upload_dir / name
+                original_name = self.pending_file.name
+
+            # Sanitize the filename to make it URL-safe
+            safe_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-')
+            sanitized_name = "".join(c if c in safe_chars else '_' for c in original_name)
+
+            self.upload_path = self.upload_dir / sanitized_name
 
             self.move(self.pending_file, self.upload_path, prefer_copy)
 
@@ -186,7 +191,7 @@ class FileImporter:
 
             self.notify(
                 ImportEventType.MOVED_PENDING_FILE,
-                self.pending_file, self.upload_path
+                self.pending_file, self.upload_path, original_name=original_name
             )
             self.notify(ImportEventType.END_DATA_EXTRACTION, self.upload_path)
 

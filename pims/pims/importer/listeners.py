@@ -257,9 +257,11 @@ class CytomineListener(ImportListener):
         uf.status = UploadedFile.EXTRACTING_DATA
         uf.update()
 
-    def moved_pending_file(self, old_path: Path, new_path: Path, *args, **kwargs):
+    def moved_pending_file(self, old_path: Path, new_path: Path, *args, original_name: Optional[str] = None, **kwargs):
         uf = self.get_uf(old_path)
         uf.filename = str(new_path.relative_to(FILE_ROOT_PATH))
+        if original_name:
+            uf.originalFilename = original_name
         uf.update()
         self.path_uf_mapping[str(new_path)] = uf
 
