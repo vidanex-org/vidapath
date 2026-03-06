@@ -76,8 +76,8 @@ def iter_importable_files(
     # Blacklist of extensions and name patterns that should not be processed as images.
     INVALID_PATTERNS = ['.json', '.xml', '.txt', '.md', '.pdf', '.docx', '.xlsx', '.mip', 'dsmeta.zip', '.dsmeta']
 
-    # Regex for pattern strategy, now capturing specimen type for image group.
-    pattern_regex = re.compile(r"([A-Z]{1,2})(\d{4})([-_]?)(\d{4,5})-([A-Z0-9]{1})")
+    # Regex for pattern strategy, specimen type part is now optional.
+    pattern_regex = re.compile(r"([A-Z]{1,2})(\d{4})([-_]?)(\d{4,5})(([-_]?)([A-Z0-9]{1}))?")
 
     def get_project_and_group_name(strategy: str, file_path: Path) -> Tuple[str, Optional[str]]:
         """Helper function to determine project and imagegroup name based on strategy."""
@@ -95,7 +95,8 @@ def iter_importable_files(
             match = pattern_regex.search(stem)
             if match:
                 project_name = f"{match.group(1)}{match.group(2)}{match.group(3)}{match.group(4)}"
-                imagegroup_name = match.group(5)
+                # group(7) is the specimen type, which is inside the optional group(5)
+                imagegroup_name = match.group(7) if match.group(5) else None
             else:
                 logger.info(f"Skipping '{file_path}' - does not match pattern strategy.")
         else:
