@@ -240,9 +240,6 @@ services:
     networks:
       host_network:
         ipv4_address: 172.16.238.16
-
-volumes:
-
 networks:
   host_network:
     driver: bridge
