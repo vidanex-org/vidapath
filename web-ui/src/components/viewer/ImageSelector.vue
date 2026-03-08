@@ -64,6 +64,7 @@ export default {
   computed: {
     project: get('currentProject/project'),
     shortTermToken: get('currentUser/shortTermToken'),
+    activeImageGroupForViewer: get('project-tree/activeImageGroupForViewer'),
     viewerModule() {
       return this.$store.getters['currentProject/currentViewerModule'];
     },
@@ -118,18 +119,34 @@ export default {
       }
     },
     async fetchImages(loading = true) {
+      console.log('[DEBUG] ImageSelector: Fetching images. Active group from store:', this.activeImageGroupForViewer);
+
       if (loading) {
         this.loading = true;
       }
 
       try {
-        let collection = new ImageInstanceCollection({
-          filterKey: 'project',
-          filterValue: this.project.id,
-          max: this.nbImagesDisplayed,
-          sort: 'id',
-          order: 'asc',
-        });
+        let collection;
+        if (this.activeImageGroupForViewer) {
+          console.log('[DEBUG] ImageSelector: Fetching by IMAGEGROUP:', this.activeImageGroupForViewer);
+          collection = new ImageInstanceCollection({
+            filterKey: 'imagegroup',
+            filterValue: this.activeImageGroupForViewer,
+            max: this.nbImagesDisplayed,
+            sort: 'id',
+            order: 'asc',
+          });
+        }
+        else {
+          console.log('[DEBUG] ImageSelector: Fetching by PROJECT:', this.project.id);
+          collection = new ImageInstanceCollection({
+            filterKey: 'project',
+            filterValue: this.project.id,
+            max: this.nbImagesDisplayed,
+            sort: 'id',
+            order: 'asc',
+          });
+        }
 
         let data = (await collection.fetchPage(0));
         this.images = data.array;
@@ -173,6 +190,7 @@ export default {
     this.$eventBus.$on('shortkeyEvent', this.shortkeyHandler);
   },
   beforeDestroy() {
+    this.$store.dispatch('project-tree/setActiveImageGroupForViewer', null);
     this.$eventBus.$off('shortkeyEvent', this.shortkeyHandler);
   }
 };

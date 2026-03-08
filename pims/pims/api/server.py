@@ -14,9 +14,9 @@ class ServerInfo(BaseModel):
 
 class UIConfig(BaseModel):
     """UI configuration exposed to frontend."""
-    easy_import_enable_folder_based: bool = Field(
+    easy_import_project_name_strategy: str = Field(
         ...,
-        description="Whether folder-based UI mode is enabled for easy import"
+        description="The strategy to determine project name for easy import ('folder', 'substring', 'pattern')"
     )
 
 
@@ -35,5 +35,5 @@ async def get_ui_config() -> UIConfig:
     """
     settings = get_settings()
     return UIConfig(
-        easy_import_enable_folder_based=settings.easy_import_enable_folder_based
+        easy_import_project_name_strategy=settings.easy_import_project_name_strategy
     )

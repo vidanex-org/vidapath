@@ -172,10 +172,15 @@ class FileImporter:
             self.mkdir(self.upload_dir)
 
             if self.pending_name:
-                name = self.pending_name
+                original_name = self.pending_name
             else:
-                name = self.pending_file.name
-            self.upload_path = self.upload_dir / name
+                original_name = self.pending_file.name
+
+            # Sanitize the filename to make it URL-safe
+            safe_chars = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-')
+            sanitized_name = "".join(c if c in safe_chars else '_' for c in original_name)
+
+            self.upload_path = self.upload_dir / sanitized_name
 
             self.move(self.pending_file, self.upload_path, prefer_copy)
 
@@ -186,7 +191,7 @@ class FileImporter:
 
             self.notify(
                 ImportEventType.MOVED_PENDING_FILE,
-                self.pending_file, self.upload_path
+                self.pending_file, self.upload_path, original_name=original_name
             )
             self.notify(ImportEventType.END_DATA_EXTRACTION, self.upload_path)
 
@@ -204,7 +209,15 @@ class FileImporter:
             if format is None:
                 self.notify(ImportEventType.ERROR_NO_FORMAT, self.upload_path)
                 if AUTO_DELETE_FAILED_UPLOAD and self.upload_path.exists():
-                    self.upload_path.delete_upload_root()
+                    try:
+                        self.upload_path.delete_upload_root()
+                    except FileNotFoundError:
+                        # 如果无法找到上传根目录，则尝试删除当前路径
+                        if self.upload_path.exists():
+                            if self.upload_path.is_dir():
+                                shutil.rmtree(self.upload_path)
+                            else:
+                                self.upload_path.unlink()
                 raise NoMatchingFormatProblem(self.upload_path)
             self.notify(
                 ImportEventType.END_FORMAT_DETECTION,
@@ -232,7 +245,15 @@ class FileImporter:
                         exception=e
                     )
                     if AUTO_DELETE_FAILED_UPLOAD and self.upload_path.exists():
-                        self.upload_path.delete_upload_root()
+                        try:
+                            self.upload_path.delete_upload_root()
+                        except FileNotFoundError:
+                            # 如果无法找到上传根目录，则尝试删除当前路径
+                            if self.upload_path.exists():
+                                if self.upload_path.is_dir():
+                                    shutil.rmtree(self.upload_path)
+                                else:
+                                    self.upload_path.unlink()
                     raise FileErrorProblem(self.upload_path)
 
                 # Now the archive is extracted, check if it's a multi-file format

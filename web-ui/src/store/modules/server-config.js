@@ -4,14 +4,14 @@ export default {
   namespaced: true,
 
   state: {
-    easyImportEnableFolderBased: true, // Default value
+    easyImportProjectNameStrategy: 'folder', // Default value
     loaded: false,
     error: null
   },
 
   mutations: {
     SET_UI_CONFIG(state, config) {
-      state.easyImportEnableFolderBased = config.easyImportEnableFolderBased;
+      state.easyImportProjectNameStrategy = config.easyImportProjectNameStrategy;
       state.loaded = true;
       state.error = null;
     },
@@ -22,14 +22,14 @@ export default {
     },
 
     resetState(state) {
-      state.easyImportEnableFolderBased = true;
+      state.easyImportProjectNameStrategy = 'folder';
       state.loaded = false;
       state.error = null;
     }
   },
 
   actions: {
-    async fetchServerConfig({commit}) {
+    async fetchServerConfig({ commit }) {
       try {
         const response = await Cytomine.instance.api.get('imageserver/ui-config.json');
         commit('SET_UI_CONFIG', response.data);
@@ -43,7 +43,7 @@ export default {
   },
 
   getters: {
-    isFolderBasedEnabled: state => state.easyImportEnableFolderBased,
+    isFolderBasedEnabled: state => state.easyImportProjectNameStrategy === 'folder' || state.easyImportProjectNameStrategy === 'pattern',
     isLoaded: state => state.loaded,
     hasError: state => state.error !== null
   }
