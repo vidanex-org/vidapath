@@ -133,7 +133,6 @@ def iter_importable_files(
                 if file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
                     project_name = 'non-project-images'
                     imagegroup_name = None
-                    logger.info(f"File '{file_path}' did not match pattern, but has a supported extension. Assigning to 'non-project-images' project.")
                 else:
                     logger.info(f"Skipping '{file_path}' - does not match pattern strategy and is not a whitelisted extension.")
         else:
