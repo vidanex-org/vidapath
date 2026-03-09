@@ -203,7 +203,6 @@ services:
       - iam
       - pims
       - web-ui
-      - ai-api
     environment:
       <<: [*version-env]
       IMAGES_CORE: cytomine/core:latest
@@ -215,31 +214,11 @@ services:
       IMAGES_WEB_UI: cytomine/web-ui:latest
       INTERNAL_URLS_IAM: iam:8100
       INTERNAL_URLS_WEB_UI: web-ui
-      INTERNAL_URLS_AI_API: ai-api:9801
       URLS_SCHEME: ${URLS_SCHEME:-http}
     networks:
       host_network:
         ipv4_address: 172.16.238.14
 
-  ai-api:
-    build:
-      context: ./ai-api
-    restart: unless-stopped
-    environment:
-      SERVER_URL: http://127.0.0.1
-      INTERNAL_URL_CORE: http://nginx
-      PUBLIC_KEY: 6435658b-d0a8-4ff6-9abb-d29f0182cf57
-      PRIVATE_KEY: d8301a5c-b194-445e-aa03-8b6d0fde006e
-      PROJECT_NAME: images
-      ROOT_PATH: /ai-api
-      PENDING_PATH: /tmp/uploaded
-      AI_SERVICE_API_ENDPOINT: "https://aimicroservice1.dev.vidanex.com"
-      AI_SERVICE_SECRET_KEY: "6zcvf1u2wne9v3169iwr79qjavvp8ba8"
-    volumes:
-      - ${DATA_PATH:-./data}/ai-api:/dist/data
-    networks:
-      host_network:
-        ipv4_address: 172.16.238.16
 networks:
   host_network:
     driver: bridge
