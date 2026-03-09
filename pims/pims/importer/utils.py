@@ -77,12 +77,17 @@ def iter_importable_files(
     INVALID_PATTERNS = ['.json', '.xml', '.txt', '.md', '.pdf', '.docx', '.xlsx', '.mip', 'dsmeta.zip', '.dsmeta']
 
     # Regex for pattern strategy, specimen type part is now optional and must be an alphabet enclosed in hyphens.
-    pattern_regex = re.compile(r"([A-Z]{1,2})(\d{4})([-_]?)(\d{4,5})(-([A-Z]{1})-)?")
+    pattern_regex = re.compile(r"([A-Z]{1,2})(\d{4})([-_]?)(\d{2,6})(-([A-Z]{1})-)?")
 
     def get_project_and_group_name(strategy: str, file_path: Path) -> Tuple[str, Optional[str]]:
         """Helper function to determine project and imagegroup name based on strategy."""
         stem = file_path.stem
         project_name, imagegroup_name = None, None
+        SUPPORTED_EXTENSIONS = [
+            '.bmp', '.dicom', '.dcm', '.tif', '.tiff', '.jpeg', '.jpg', '.jp2', '.j2k',
+            '.ome.tif', '.ome.tiff', '.png', '.ppm', '.sis', '.webp',
+            '.svs', '.qptiff'
+        ]
 
         if strategy == 'folder':
             project_name = file_path.parent.name
@@ -98,7 +103,12 @@ def iter_importable_files(
                 # group(6) is the specimen type, inside the optional group(5)
                 imagegroup_name = match.group(6) if match.group(5) else None
             else:
-                logger.info(f"Skipping '{file_path}' - does not match pattern strategy.")
+                if file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
+                    project_name = 'non-project-images'
+                    imagegroup_name = None
+                    logger.info(f"File '{file_path}' did not match pattern, but has a supported extension. Assigning to 'non-project-images' project.")
+                else:
+                    logger.info(f"Skipping '{file_path}' - does not match pattern strategy and is not a whitelisted extension.")
         else:
             logger.warning(f"Unknown project_name_strategy: {strategy}. Skipping file '{file_path}'")
         
