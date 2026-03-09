@@ -16,26 +16,38 @@ logger = logging.getLogger("pims.app")
 
 
 class FileImportCache:
+    FAILURE_LIMIT = 3
+
     def __init__(self, redis_url: str, cache_key: str):
         self.redis = Redis.from_url(redis_url, decode_responses=True)
-        self.cache_key = cache_key
+        self.processed_key = f"{cache_key}:processed"
+        self.failures_key = f"{cache_key}:failures"
 
     def should_process(self, file_path: Path) -> bool:
         """
-        Check if the file needs processing based on its mtime and size.
-        Returns True if the file is new or modified since last import.
+        Check if the file needs processing.
+        A file is skipped if:
+        1. It does not exist.
+        2. It has failed to import {FAILURE_LIMIT} or more times.
+        3. It has been successfully processed and has not changed since.
         """
         if not file_path.exists():
             return False
-            
+
         try:
+            # Check failure count
+            failure_count = self.redis.hget(self.failures_key, str(file_path))
+            if failure_count and int(failure_count) >= self.FAILURE_LIMIT:
+                logger.warning(f"Skipping '{file_path}' - has failed {failure_count} times (limit: {self.FAILURE_LIMIT}).")
+                return False
+
+            # Check if already processed and unchanged
             stat = file_path.stat()
             current_fingerprint = f"{stat.st_mtime}_{stat.st_size}"
-            
-            cached_fingerprint = self.redis.hget(self.cache_key, str(file_path))
+            cached_fingerprint = self.redis.hget(self.processed_key, str(file_path))
             
             if cached_fingerprint == current_fingerprint:
-                return False # Already processed and unchanged
+                return False  # Already processed and unchanged
             
             return True
         except OSError:
@@ -43,14 +55,29 @@ class FileImportCache:
 
     def mark_processed(self, file_path: Path):
         """
-        Mark the file as processed in Redis using its current mtime and size.
+        Mark the file as successfully processed and reset its failure count.
         """
         try:
+            # Mark as processed
             stat = file_path.stat()
             fingerprint = f"{stat.st_mtime}_{stat.st_size}"
-            self.redis.hset(self.cache_key, str(file_path), fingerprint)
+            self.redis.hset(self.processed_key, str(file_path), fingerprint)
+
+            # Reset failure count
+            self.redis.hdel(self.failures_key, str(file_path))
         except OSError:
-            pass # File might have been moved/deleted
+            pass  # File might have been moved/deleted
+
+    def mark_failed(self, file_path: Path):
+        """
+        Increment the failure count for the file.
+        """
+        try:
+            # Ensure file exists before marking failure
+            if file_path.exists():
+                self.redis.hincrby(self.failures_key, str(file_path), 1)
+        except OSError:
+            pass
 
 
 def iter_importable_files(
@@ -180,10 +207,10 @@ def process_import_batch(
     for bucket, file_path, project_name, imagegroup_name in file_iterator:
         count_total_seen += 1
         
-        # Check if file has already been processed and unchanged
+        # Check if file has already been processed and unchanged or failed too many times
         if not file_cache.should_process(file_path):
             count_skipped += 1
-            logger.info(f"Skipping '{file_path.name}' (cached, unchanged).")
+            # No need to log here, should_process already does it.
             continue
 
         logger.info(f"Processing file: {file_path.name} (Project: {project_name}, Group: {imagegroup_name})")
@@ -225,12 +252,14 @@ def process_import_batch(
                 summary.successful += 1
                 logger.info(f"[SUCCESS] Imported: {file_path.name}")
             else:
+                file_cache.mark_failed(file_path)
                 summary.failed += 1
                 logger.error(f"[FAILED] Import {file_path.name}: {result.message}")
             
             summary.results.append(result)
 
         except Exception as e:
+            file_cache.mark_failed(file_path)
             summary.failed += 1
             logger.error(f"[ERROR] Unexpected exception processing {file_path.name}: {e}", exc_info=True)
 
