@@ -30,7 +30,6 @@ services:
       POSTGIS_PORT: 5432
       POSTGIS_USER: docker
       STORAGE_PATH: /data/images
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 150
     networks:
       host_network:
         ipv4_address: 172.16.238.11
