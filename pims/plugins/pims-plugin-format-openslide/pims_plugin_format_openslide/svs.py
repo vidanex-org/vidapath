@@ -12,12 +12,15 @@
 #  * See the License for the specific language governing permissions and
 #  * limitations under the License.
 from datetime import datetime
+import logging
 from typing import Optional
 
 from pint import Quantity
 from tifffile import astype
 
 from pims.cache import cached_property
+
+log = logging.getLogger("pims.formats")
 from pims.formats import AbstractFormat
 from pims.formats.utils.abstract import CachedDataPath
 from pims.formats.utils.engines.tifffile import TifffileChecker, TifffileParser, cached_tifffile
@@ -68,8 +71,11 @@ class SVSParser(TifffileParser):
         if len(items) == 1:
             return result
         for item in items[1:]:
-            key, value = item.split(' = ')
-            result[key.strip()] = astype(value.strip())
+            try:
+                key, value = item.split(' = ')
+                result[key.strip()] = astype(value.strip())
+            except ValueError:
+                continue
         return result
 
     @staticmethod
