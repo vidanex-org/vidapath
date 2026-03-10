@@ -46,7 +46,9 @@ spring:
     hikari:
       poolName: Hikari
       auto-commit: false
-      maximum-pool-size: 80
+      maximum-pool-size: 500
+      minimum-idle: 50
+      max-lifetime: 900000
 
   jpa:
 #    database-platform: be.cytomine.config.CustomPostgreSQLDialect
