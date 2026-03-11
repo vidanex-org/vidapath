@@ -110,11 +110,7 @@ def iter_importable_files(
         """Helper function to determine project and imagegroup name based on strategy."""
         stem = file_path.stem
         project_name, imagegroup_name = None, None
-        SUPPORTED_EXTENSIONS = [
-            '.bmp', '.dicom', '.dcm', '.tif', '.tiff', '.jpeg', '.jpg', '.jp2', '.j2k',
-            '.ome.tif', '.ome.tiff', '.png', '.ppm', '.sis', '.webp',
-            '.svs', '.qptiff'
-        ]
+        SUPPORTED_EXTENSIONS = ['.tiff','.ome.tif', '.ome.tiff', '.svs', '.qptiff']
 
         if strategy == 'folder':
             project_name = file_path.parent.name
