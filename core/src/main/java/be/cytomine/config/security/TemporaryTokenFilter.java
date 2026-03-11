@@ -31,12 +31,9 @@ public class TemporaryTokenFilter extends OncePerRequestFilter {
     @Override
         protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
                 throws ServletException, IOException {
-            
-            log.info("Processing request: {} with parameters: {}", request.getRequestURI(), request.getParameterMap());
 
             // 首先检查是否已经有认证信息（如JWT认证）
             if (SecurityContextHolder.getContext().getAuthentication() != null) {
-                log.info("Authentication already exists: {}", SecurityContextHolder.getContext().getAuthentication());
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -44,7 +41,6 @@ public class TemporaryTokenFilter extends OncePerRequestFilter {
             // 从请求参数中获取临时访问令牌
             String accessToken = request.getParameter("access_token");
             if (accessToken == null || accessToken.isEmpty()) {
-                log.info("No access_token parameter found in request");
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -120,15 +116,12 @@ public class TemporaryTokenFilter extends OncePerRequestFilter {
             // 1. 前端路径: /#/project/103587
             // 2. 后端API路径: /api/project/103587/imageinstance/103600.json
             
-            log.info("Attempting to extract project ID from URI: {}", uri);
-            
             try {
                 // 处理前端路径，包括带hash的部分
                 if (uri.contains("/#/project/")) {
                     String[] parts = uri.split("/#/project/");
                     if (parts.length > 1) {
                         String projectIdPart = parts[1].split("/")[0];
-                        log.info("Extracted project ID part from hash URL: {}", projectIdPart);
                         return Long.parseLong(projectIdPart);
                     }
                 }
@@ -137,7 +130,6 @@ public class TemporaryTokenFilter extends OncePerRequestFilter {
                 if (uri.startsWith("/api/project/")) {
                     String[] parts = uri.substring("/api/project/".length()).split("/");
                     if (parts.length > 0) {
-                        log.info("Extracted project ID part from API URL: {}", parts[0]);
                         return Long.parseLong(parts[0]);
                     }
                 }   
