@@ -215,7 +215,6 @@ public class RestUserController extends RestCytomineController {
     @GetMapping("/user/current.json")
     public ResponseEntity<String> getCurrentUser(
     ) {
-        log.debug("REST request to get current User");
         return responseSuccess(currentUserService.getCurrentUser());
     }
 

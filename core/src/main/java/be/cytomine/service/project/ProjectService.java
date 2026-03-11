@@ -245,12 +245,10 @@ public class ProjectService extends ModelService {
             throw new WrongArgumentException("Cannot sort on membersCount without argument withMembersCount");
         }
 
-        log.debug("searchParameters:");
         searchParameters.stream().map(x -> x.toString()).forEach(log::debug);
 
         List<SearchParameterEntry> validParameters = SQLSearchParameter.getDomainAssociatedSearchParameters(Project.class, searchParameters, getEntityManager());
 
-        log.debug("validParameters:");
         validParameters.stream().map(x -> x.toString()).forEach(log::debug);
 
         validParameters.forEach(searchParameterEntry -> searchParameterEntry.setProperty("p."+searchParameterEntry.getProperty()));
@@ -325,9 +323,7 @@ public class ProjectService extends ModelService {
         }
 
         SearchParameterProcessed sqlSearchConditions = SQLSearchParameter.searchParametersToSQLConstraints(validParameters);
-        log.debug("sqlSearchConditions:");
         sqlSearchConditions.getData().stream().map(x -> x.toString()).forEach(log::debug);
-        log.debug("sqlSearchConditions.params:");
         sqlSearchConditions.getSqlParameters().entrySet().stream().map(Object::toString).forEach(log::debug);
 
         String project = sqlSearchConditions.getData().stream().filter(x -> x.getProperty().startsWith("p.")).map(x -> x.getSql()).collect(Collectors.joining(" AND "));
@@ -526,7 +522,6 @@ public class ProjectService extends ModelService {
             request += " OFFSET " + offset;
         }
 
-        log.debug(request);
         Query query = getEntityManager().createNativeQuery(request, Tuple.class);
         Map<String, Object> mapParams = sqlSearchConditions.getSqlParameters();
         for (Map.Entry<String, Object> entry : mapParams.entrySet()) {
