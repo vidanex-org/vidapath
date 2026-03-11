@@ -47,7 +47,7 @@ class ReadableSettings(BaseSettings):
     # Must be TRUE in production.
     cache_responses: bool = True
     # The max-age to set in HTTP Cache-Control for cached image responses.
-    image_response_cache_control_max_age: int = 60 * 60 * 24
+    image_response_cache_control_max_age: int = 60 * 60 * 24 * 30
 
     task_queue_enabled: bool = True
     task_queue_url: str = "rabbitmq:5672"
@@ -56,11 +56,11 @@ class ReadableSettings(BaseSettings):
     max_length_complete_histogram: int = 1024
 
     # Maximum number of operations to cache
-    vips_cache_max_items: int = 100
+    vips_cache_max_items: int = 32768
     # Maximum memory in MB to use for this cache
-    vips_cache_max_memory: int = 50
+    vips_cache_max_memory: int = 5000
     # Maximum number of files to hold open
-    vips_cache_max_files: int = 100
+    vips_cache_max_files: int = 10000
 
     auto_delete_multi_file_format_archive: bool = True
     auto_delete_collection_archive: bool = True
