@@ -100,7 +100,8 @@ class FileImporter:
 
     def __init__(
         self, pending_file: Path, pending_name: Optional[str] = None,
-        listeners: Optional[List[ImportListener]] = None
+        listeners: Optional[List[ImportListener]] = None,
+        store_path: Optional[Path] = None,
     ):
         """
         Parameters
@@ -112,10 +113,13 @@ class FileImporter:
             If not provided, the current pending file name is used.
         listeners
             A list of import listeners
+        store_path
+            The original path of the file, before it was moved to pending.
         """
         self.listeners = listeners if listeners is not None else []
         self.pending_file = pending_file
         self.pending_name = pending_name
+        self.store_path = store_path
 
         self.upload_dir = None
         self.upload_path = None
@@ -182,7 +186,38 @@ class FileImporter:
 
             self.upload_path = self.upload_dir / sanitized_name
 
+            # VSC: Move external label.jpg to a dedicated folder if it exists, BEFORE moving the main file.
+            if self.store_path:
+                log.info(f"Checking for external label associated with source: {self.store_path}")
+                source_dir = self.store_path.parent
+                base_name, _ = self.store_path.name.rsplit('.', 1)
+
+                # Path 1: .dsmeta folder
+                meta_folder_path = source_dir / f"{self.store_path.name}.dsmeta"
+                log.info(f"Checking for metadata folder at: {meta_folder_path}")
+
+                # Path 2: basename folder (fallback)
+                if not meta_folder_path.exists() or not meta_folder_path.is_dir():
+                    meta_folder_path = source_dir / base_name
+                    log.info(f"Not found. Checking for metadata folder at: {meta_folder_path}")
+                
+                if meta_folder_path.exists() and meta_folder_path.is_dir():
+                    log.info(f"Found metadata folder: {meta_folder_path}")
+                    source_label_path = meta_folder_path / 'label.jpg'
+                    log.info(f"Checking for label file at: {source_label_path}")
+                    if source_label_path.exists():
+                        dest_meta_dir = self.upload_dir / 'external-metadata'
+                        self.mkdir(dest_meta_dir)
+                        dest_label_path = dest_meta_dir / 'label.jpg'
+                        log.info(f"Found label file. Moving from {source_label_path} to {dest_label_path}")
+                        self.move(source_label_path, dest_label_path, prefer_copy)
+                    else:
+                        log.info("Label file 'label.jpg' not found in metadata folder.")
+                else:
+                    log.info("No associated metadata folder found.")
+
             self.move(self.pending_file, self.upload_path, prefer_copy)
+
 
             # If the pending file comes from an archive
             if not AUTO_DELETE_COLLECTION_ARCHIVE and not prefer_copy and self.pending_file.is_extracted():
@@ -577,7 +612,7 @@ class FileImporter:
 
 def run_import(
     filepath: str, name: str, extra_listeners: Optional[List[ImportListener]] = None,
-    prefer_copy: bool = False
+    prefer_copy: bool = False, store_path: Optional[Path] = None,
 ):
     pending_file = Path(filepath)
 
@@ -588,5 +623,5 @@ def run_import(
         extra_listeners = []
 
     listeners = [StdoutListener(name)] + extra_listeners
-    fi = FileImporter(pending_file, name, listeners)
+    fi = FileImporter(pending_file, name, listeners, store_path)
     fi.run(prefer_copy)

@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 import numpy as np
 import pyvips
@@ -21,6 +22,35 @@ from pims.utils.vips import bandjoin
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("pims.format.qptiff")
+
+
+class ExternalJPGLabel:
+    """Helper for reading an external JPG label image."""
+    def __init__(self, path):
+        self.path = path
+        try:
+            with VIPSImage.new_from_file(self.path) as img:
+                self._width = img.width
+                self._height = img.height
+        except Exception:
+            # In case the file is corrupted or not an image
+            self._width = 0
+            self._height = 0
+
+    @property
+    def width(self):
+        return self._width
+
+    @property
+    def height(self):
+        return self._height
+
+    def read(self):
+        """Read the image and return it as a numpy array."""
+        return VIPSImage.new_from_file(self.path)
+
+    def __str__(self):
+        return f"External JPEG Label ({self.width}x{self.height}) at {self.path}"
 
 
 @lru_cache
@@ -321,6 +351,26 @@ class QPTiffParser(AbstractParser):
                 imd.microscope.model = page.tags['Model'].value
 
         # Find and process associated images (thumbnail, label, macro)
+        
+        # Check for external label moved by the importer into the 'external-metadata' directory.
+        # The format.path points to the file in the "processed" dir. We need to go up to the upload dir.
+        try:
+            upload_dir = self.format.path.parent.parent
+            external_meta_dir = upload_dir / "external-metadata"
+            label_path = external_meta_dir / "label.jpg"
+            logger.info(f"Parser: Checking for moved external label at '{label_path}'")
+            if label_path.exists():
+                logger.info(f"Parser: Found external label at '{label_path}'. Loading it.")
+                external_label = ExternalJPGLabel(label_path)
+                imd.associated_label.width = external_label.width
+                imd.associated_label.height = external_label.height
+                imd.associated_label.page_index = -1 # Special index to signify external
+                self.format._external_label = external_label # Cache for reader
+            else:
+                logger.info(f"Parser: No moved external label found at '{label_path}'.")
+        except Exception as e:
+            logger.warning(f"Parser: Error while checking for external metadata: {e}")
+
         for idx, ifd in enumerate(tf.pages):
             comment = self._get_ifd_comment(ifd)
             if comment:
@@ -331,7 +381,8 @@ class QPTiffParser(AbstractParser):
                     associated = None
                     if image_type.lower() in ['thumbnail', 'thumb']:
                         associated = imd.associated_thumb
-                    elif image_type.lower() == 'label':
+                    elif image_type.lower() == 'label' and not imd.associated_label.width:
+                        # Only look for internal label if an external one was not found
                         associated = imd.associated_label
                     elif image_type.lower() in ['macro', 'overview']:
                         associated = imd.associated_macro
@@ -427,6 +478,21 @@ class QPTiffReader(AbstractReader):
     Reader for QPTiff images.
     It uses pyvips to read pixel data.
     """
+    def read_label(self, **kwargs) -> VIPSImage:
+        """Read label image, whether it's internal or external."""
+        if hasattr(self.format, '_external_label') and self.format._external_label:
+            logger.info(f"Reading external label from: {self.format._external_label.path}")
+            return self.format._external_label.read()
+        
+        # Fallback to internal label
+        logger.info("Attempting to read internal label.")
+        label_meta = self.format.parser.parse_known_metadata().associated_label
+        if hasattr(label_meta, 'page_index') and label_meta.page_index != -1:
+            logger.info(f"Found and reading internal label from page index {label_meta.page_index}")
+            return VIPSImage.new_from_file(str(self.format.path), page=label_meta.page_index)
+        
+        logger.error("Could not find any internal or external label to read.")
+        raise RuntimeError("No internal or external label found.")
 
     def _read_and_process_bands(
         self, page_indices: List[int], region: Region, out_width: int, out_height: int,
@@ -556,6 +622,7 @@ class QPTiffFormat(AbstractFormat):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._enabled = True
+        self._external_label = None
 
     @classmethod
     def get_name(cls) -> str:
