@@ -129,8 +129,8 @@ def iter_importable_files(
                 if file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
                     project_name = 'non-project-images'
                     imagegroup_name = None
-                else:
-                    logger.info(f"Skipping '{file_path}' - does not match pattern strategy and is not a whitelisted extension.")
+                # else:
+                #     # logger.info(f"Skipping '{file_path}' - does not match pattern strategy and is not a whitelisted extension.")
         else:
             logger.warning(f"Unknown project_name_strategy: {strategy}. Skipping file '{file_path}'")
         

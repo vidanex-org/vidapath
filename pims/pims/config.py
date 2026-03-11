@@ -56,11 +56,11 @@ class ReadableSettings(BaseSettings):
     max_length_complete_histogram: int = 1024
 
     # Maximum number of operations to cache
-    vips_cache_max_items: int = 32768
+    vips_cache_max_items: int = 9600
     # Maximum memory in MB to use for this cache
-    vips_cache_max_memory: int = 5000
+    vips_cache_max_memory: int = 100
     # Maximum number of files to hold open
-    vips_cache_max_files: int = 10000
+    vips_cache_max_files: int = 1000
 
     auto_delete_multi_file_format_archive: bool = True
     auto_delete_collection_archive: bool = True
