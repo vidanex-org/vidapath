@@ -122,7 +122,7 @@ export default {
 
 .image-preview-fit {
   object-fit: contain;
-  width: 70%;
+  width: 95%;
   height: auto;
   border-bottom: 1px solid $dark-border-color;
   cursor: pointer;

@@ -154,8 +154,9 @@ class ImageImporter:
 
         try:
             run_import(
-                tmp_path,
-                file_path.name,
+                filepath=tmp_path,
+                name=file_path.name,
+                store_path=file_path,
                 extra_listeners=[cytomine_listener],
             )
 
