@@ -41,14 +41,14 @@
           <!-- AI Analysis Panel Button -->
           <li>
             <a title="AI Analysis" @click="toggleAIAnalysisPanel" :class="{ active: showAIAnalysisPanel }">
-              <i class="fas fa-robot fa-fw"></i>
+              <i class="fa fa-hashtag"></i>
             </a>
           </li>
-          <li>
+          <!-- <li>
             <a title="Pathology Report" @click="toggleReportDrawer" :class="{ active: showReportDrawer }">
               <i class="fas fa-file-medical fa-fw"></i>
             </a>
-          </li>
+          </li> -->
           <hr class="is-divider" />
           <li>
             <a @click="togglePanel('layers')" :class="{ active: activePanel === 'layers' }">
@@ -128,7 +128,7 @@
       <add-ontology-modal :active="showAddOntologyModal" :index="index" @close="showAddOntologyModal = false" />
 
       <!-- Pathology Report Drawer -->
-      <pathology-report-drawer :active="showReportDrawer" @close="showReportDrawer = false" />
+      <!-- <pathology-report-drawer :active="showReportDrawer" @close="showReportDrawer = false" /> -->
     </template>
   </div>
 </template>

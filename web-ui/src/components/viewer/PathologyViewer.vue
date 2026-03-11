@@ -1,26 +1,6 @@
 <template>
   <div>
-    <!-- Run Algorithm Controls -->
-    <div class="panel">
-      <div class="panel-title" @click="runAlgorithmPanelVisible = !runAlgorithmPanelVisible">
-        <span>AI Analysis</span>
-        <span class="arrow" :class="{ open: runAlgorithmPanelVisible }">▶</span>
-      </div>
-      <div v-if="runAlgorithmPanelVisible" class="panel-body ai-runner-selection">
-        <div class="select is-fullwidth">
-          <select v-model="selectedAIRunner" :disabled="loadingRunners">
-            <option value="">Select AI Runner</option>
-            <option v-for="runner in aiRunners" :key="runner.id" :value="runner">
-              {{ runner.name }}
-            </option>
-          </select>
-        </div>
-        <button class="button is-primary" @click="runAlgorithm" :disabled="!selectedAIRunner || loadingRunners">
-          <span class="icon is-small"><i class="fas fa-play"></i></span>
-          <span>Run AI</span>
-        </button>
-      </div>
-    </div>
+
 
     <!-- Dynamic AI Result Panels -->
     <div class="panel" v-for="result in aiResults" :key="result.id">
@@ -92,7 +72,7 @@
         <!-- Manual Terms Panel -->
     <div class="panel">
       <div class="panel-title" @click="manualTermsPanelVisible = !manualTermsPanelVisible">
-        <span>Manual Terms</span>
+        <span>User Terms</span>
         <span class="arrow" :class="{ open: manualTermsPanelVisible }">▶</span>
       </div>
       <div v-if="manualTermsPanelVisible" class="panel-body">
@@ -164,37 +144,13 @@ export default {
       aiRunners: [],
       selectedAIRunner: null,
       loadingRunners: true,
-      runAlgorithmPanelVisible: true,
+      runAlgorithmPanelVisible: false, // 设置为 false 以隐藏
       manualTermsPanelVisible: true,
       treeReady: false, // 控制树组件的延迟渲染
       showTermSelectorFor: null,
 
       // Sample data structure for AI results
-      aiResults: [
-        {
-          id: 1,
-          runnerName: 'Mitosis Detector v1',
-          visible: false,
-          includeInReport: true,
-          stats: [
-            { label: "Mitosis", count: 200, percent: null, color: "#E53935", showOnImage: true },
-          ],
-          supplementaryTerms: [],
-          grade: 'Grade 3'
-        },
-        {
-          id: 2,
-          runnerName: 'Tumor Segmentation v2',
-          visible: false,
-          includeInReport: true,
-          stats: [
-            { label: "Invasive carcinoma", count: 18.8, percent: 18.8, color: "#1E88E5", showOnImage: true },
-            { label: "DCIS", count: "<0.5", percent: 0.5, color: "#00ACC1", showOnImage: false },
-          ],
-          supplementaryTerms: [],
-          grade: 'Grade 2'
-        }
-      ],
+      aiResults: [], // 清空数组以隐藏
     };
   },
 

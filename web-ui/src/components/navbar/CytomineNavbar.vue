@@ -36,7 +36,7 @@
           <span>{{ projectsLabel }}</span>
         </router-link>
         <router-link to="/ontology" class="navbar-item">
-          <i class="fa fa-hashtag"></i>
+          <i class="fas fa-hashtag"></i>
           <span>Terms</span>
         </router-link>
         <router-link to="/storage" class="navbar-item">
