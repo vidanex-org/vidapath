@@ -43,7 +43,6 @@ public class ServerController extends RestCytomineController {
 
     @RequestMapping(value = {"/server/ping.json", "/server/ping"}, method = {RequestMethod.GET, RequestMethod.POST}) // without.json is deprecated
     public ResponseEntity<String> ping(HttpSession session) throws IOException {
-        log.debug("REST request to ping");
         JsonObject json = super.mergeQueryParamsAndBodyParams();
         JsonObject response = new JsonObject();
         response.put("alive", true);

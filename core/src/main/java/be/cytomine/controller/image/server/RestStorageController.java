@@ -31,7 +31,6 @@ public class RestStorageController extends RestCytomineController {
     public ResponseEntity<String> list(
             @RequestParam(defaultValue = "false", required = false) Boolean all
     ) {
-        log.debug("REST request to list storages: all? {}", all);
         return responseSuccess(all ? storageService.list() : storageService.list(currentUserService.getCurrentUser(), null));
     }
 
@@ -39,7 +38,6 @@ public class RestStorageController extends RestCytomineController {
     public ResponseEntity<String> show(
             @PathVariable Long id
     ) {
-        log.debug("REST request to get Storage : {}", id);
         return storageService.find(id)
                 .map(this::responseSuccess)
                 .orElseGet(() -> responseNotFound("Storage", id));
