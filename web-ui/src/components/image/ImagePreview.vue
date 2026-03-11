@@ -15,8 +15,7 @@
 <template>
   <div class="card" :class="{ 'full-height-card': fullHeightCard }">
     <a class="card-image recent-image" @click="handleNavigation">
-      <figure class="image is-5by3" :style="figureStyle">
-      </figure>
+      <img :src="imageUrl" class="image-preview-fit">
     </a>
     <div class="card-content">
       <div class="content image-info">
@@ -83,8 +82,8 @@ export default {
     previewUrl() {
       return changeImageUrlFormat(this.rawPreviewUrl);
     },
-    figureStyle() {
-      return { backgroundImage: `url("${appendShortTermToken(this.previewUrl, this.shortTermToken)}")` };
+    imageUrl() {
+      return appendShortTermToken(this.previewUrl, this.shortTermToken);
     },
     tissue() {
       // Return fixed value for now, can be made dynamic later
@@ -121,13 +120,14 @@ export default {
 <style scoped lang="scss">
 @import "../../assets/styles/dark-variables.scss";
 
-.image {
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-size: cover;
-  position: relative;
+.image-preview-fit {
+  object-fit: contain;
+  width: 70%;
+  height: auto;
   border-bottom: 1px solid $dark-border-color;
   cursor: pointer;
+  display: block;
+  margin: 0.5rem auto;
 }
 
 .card.full-height-card {

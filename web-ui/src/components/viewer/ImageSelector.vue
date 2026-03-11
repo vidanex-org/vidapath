@@ -20,8 +20,9 @@
           <a
             class="card-image"
             @click="addImage(image)"
-            :style="'background-image: url(' + appendShortTermToken(imageThumbUrl(image), shortTermToken) + ')'"
-          ></a>
+          >
+            <img :src="appendShortTermToken(imageThumbUrl(image), shortTermToken)" alt="Image thumbnail" />
+          </a>
           <div class="card-content" @click="addImage(image)">
            <image-name :image="image" />
           </div>
@@ -266,14 +267,19 @@ export default {
 }
 
 .card-image {
-  display: inline-block;
+  display: block;
   width: 100%;
-  height: 9.5em;
-  background-position: center center;
-  background-size: cover;
-  background-repeat: no-repeat;
   background-color: transparent;
   border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden; /* Ensure the image corners are rounded */
+}
+
+.card-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
 }
 
 .card-content {
