@@ -118,11 +118,11 @@ services:
       KC_DB_URL_HOST: postgis
       KC_DB_URL_PORT: 5432
       KC_DB_USERNAME: iam
-      KC_HOSTNAME: ummc.viewer.vidanex.com
-      KC_HOSTNAME_ADMIN: ummc.viewer.vidanex.com
+      KC_HOSTNAME: 100.73.101.66
+      KC_HOSTNAME_ADMIN: 100.73.101.66
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_BACKCHANNEL: true
-      KC_HOSTNAME_STRICT_HTTPS: true
+      KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_RELATIVE_PATH: /iam
       KC_HTTP_ENABLED: true
       KC_PROXY_HEADERS: xforwarded
@@ -149,7 +149,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime
     environment:
-      SERVER_URL: https://ummc.viewer.vidanex.com
+      SERVER_URL: http://100.73.101.66
       IMAGE_SERVER_PRIVATE_KEY: d70607f5-c478-403c-be11-3dbc1716d1cf
       IMAGE_SERVER_PUBLIC_KEY: 9a8b8369-2446-44cb-b0af-604a74e1dcdb
       IAM_URL: http://nginx
