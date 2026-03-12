@@ -56,10 +56,6 @@ services:
   pims-cache:
     image: redis:7.2
     restart: unless-stopped
-    command: >
-      redis-server 
-      --maxmemory 16gb 
-      --maxmemory-policy allkeys-lru
     volumes:
       - ${DATA_PATH:-./data}/pims-cache:/data
     networks:
