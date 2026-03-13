@@ -36,56 +36,258 @@
       </div>
 
       <div v-if="result.visible" class="panel-body">
-        <h2 class="subtitle">AI Results</h2>
-        <div class="item" v-for="item in result.stats" :key="item.label">
-          <div class="left">
-            <label class="switch is-small">
-              <input type="checkbox" v-model="item.showOnImage">
-              <span class="switch-slider"></span>
-            </label>
-            <span class="dot" :style="{ background: item.color }"></span>
-            <span>{{ item.label }}</span>
-          </div>
-          <div class="right">
-            <span>{{ item.count }}</span>
-            <span v-if="item.percent !== null">{{ item.percent }}%</span>
-          </div>
-        </div>
+        
+        <!-- Custom panel for prostate-gleason -->
+        <template v-if="result.runnerName === 'prostate-gleason'">
+          <b-tabs v-model="result.activeTab" size="is-small" class="gleason-tabs" expanded>
+            <!-- Annotations Tab -->
+            <b-tab-item label="Annotations">
+              <div class="gleason-section">
+                <div class="level is-mobile mb-2">
+                  <div class="level-left">
+                    <label class="switch is-small">
+                      <input type="checkbox" v-model="result.showAllAnnotations">
+                      <span class="switch-slider"></span>
+                    </label>
+                    <span class="ml-2 is-size-7">Show results on image</span>
+                  </div>
+                  <div class="level-right">
+                    <span class="is-size-7">%</span>
+                  </div>
+                </div>
+                <!-- Annotation items -->
+                <div class="item" v-for="anno in result.annotations" :key="anno.label">
+                  <div class="left">
+                    <label class="switch is-small">
+                      <input type="checkbox" v-model="anno.showOnImage">
+                      <span class="switch-slider"></span>
+                    </label>
+                    <span class="dot" :style="{ background: anno.color }"></span>
+                    <span class="is-size-7 text-ellipsis" :title="anno.label">{{ anno.label }}</span>
+                  </div>
+                  <div class="right is-size-7">
+                    <span v-if="anno.percent !== undefined">{{ anno.percent }}</span>
+                    <span v-else-if="anno.present !== undefined">{{ anno.present ? 'Present' : 'Absent' }}</span>
+                  </div>
+                </div>
+              </div>
+            </b-tab-item>
 
-        <h2 class="subtitle">Supplementary Terms</h2>
-        <div class="supplementary-terms-list">
-          <div class="item" v-for="termId in result.supplementaryTerms" :key="termId">
+            <!-- Areas Tab -->
+            <b-tab-item label="Areas">
+              <div class="gleason-section">
+                <div class="is-size-7 mb-2 text-muted">Resolution: <strong>0.25 μm/px</strong></div>
+                <!-- Area items -->
+                <div class="item" v-for="area in result.areas" :key="area.label">
+                  <div class="left">
+                    <span class="dot" :style="{ background: area.color }"></span>
+                    <span class="is-size-7">{{ area.label }}</span>
+                  </div>
+                  <div class="right is-size-7">{{ area.value }} mm²</div>
+                </div>
+                
+                <div class="mt-4 is-size-7 has-text-weight-bold">Measurements</div>
+                <div class="item">
+                  <div class="left">
+                    <label class="switch is-small">
+                      <input type="checkbox" v-model="result.measurements.showTumorLength">
+                      <span class="switch-slider"></span>
+                    </label>
+                    <span class="line-indicator" style="background: yellow;"></span>
+                    <span class="is-size-7">Tumor length</span>
+                  </div>
+                  <div class="right is-size-7">{{ result.measurements.tumorLength }} mm</div>
+                </div>
+                <div class="item">
+                  <div class="left">
+                    <label class="switch is-small">
+                      <input type="checkbox" v-model="result.measurements.showBiopsyLength">
+                      <span class="switch-slider"></span>
+                    </label>
+                    <span class="line-indicator" style="background: #1E88E5;"></span>
+                    <span class="is-size-7">Biopsy length</span>
+                  </div>
+                  <div class="right is-size-7">{{ result.measurements.biopsyLength }} mm</div>
+                </div>
+              </div>
+            </b-tab-item>
+
+            <!-- Scoring Tab -->
+            <b-tab-item label="Scoring">
+               <div class="gleason-section pt-2">
+                  <div class="columns is-mobile is-multiline m-0">
+                    <div class="column is-6 p-1">
+                      <div class="box p-2 has-text-centered scoring-box">
+                        <div class="is-size-7 has-text-grey">Primary</div>
+                        <div class="is-size-5 has-text-weight-bold has-text-primary">{{ result.scoring.primaryPattern }}</div>
+                      </div>
+                    </div>
+                    <div class="column is-6 p-1">
+                      <div class="box p-2 has-text-centered scoring-box">
+                        <div class="is-size-7 has-text-grey">Secondary</div>
+                        <div class="is-size-5 has-text-weight-bold has-text-info">{{ result.scoring.secondaryPattern }}</div>
+                      </div>
+                    </div>
+                    <div class="column is-12 p-1">
+                      <div class="box p-2 has-text-centered scoring-box">
+                        <div class="is-size-7 has-text-grey">Gleason Score</div>
+                        <div class="is-size-4 has-text-weight-bold has-text-warning">{{ result.scoring.primaryPattern }} + {{ result.scoring.secondaryPattern }} = {{ result.scoring.totalScore }}</div>
+                      </div>
+                    </div>
+                    <div class="column is-12 p-1">
+                      <div class="box p-2 has-text-centered scoring-box">
+                        <div class="is-size-7 has-text-grey">Grade Group</div>
+                        <div class="is-size-4 has-text-weight-bold has-text-danger">{{ result.scoring.gradeGroup }}</div>
+                      </div>
+                    </div>
+                  </div>
+               </div>
+            </b-tab-item>
+
+            <!-- Report Tab -->
+            <b-tab-item label="Report">
+              <div class="gleason-section report-form">
+                <div class="field is-horizontal is-small mb-2 align-items-center">
+                  <div class="field-label is-small is-normal"><label class="label mb-0">Grade group</label></div>
+                  <div class="field-body">
+                    <div class="control">
+                      <div class="select is-small is-fullwidth">
+                        <select v-model="result.report.gradeGroup">
+                          <option v-for="n in 5" :key="n" :value="n">{{ n }}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field is-horizontal is-small mb-2 align-items-center">
+                  <div class="field-label is-small is-normal"><label class="label mb-0">Gleason</label></div>
+                  <div class="field-body">
+                    <div class="control">
+                      <div class="select is-small is-fullwidth">
+                        <select v-model="result.report.gleasonScore">
+                          <option value="4+5">4 + 5 = 9</option>
+                          <option value="3+4">3 + 4 = 7</option>
+                          <option value="4+3">4 + 3 = 7</option>
+                          <option value="3+3">3 + 3 = 6</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field is-horizontal is-small mb-2 align-items-center" v-for="level in [5, 4, 3]" :key="'g'+level">
+                  <div class="field-label is-small is-normal"><label class="label mb-0">Grade {{ level }} %</label></div>
+                  <div class="field-body d-flex-row">
+                    <div class="control" style="width:100%">
+                      <input class="input is-small" type="number" step="0.1" v-model="result.report['gleason' + level]">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field is-horizontal is-small mb-2 align-items-center">
+                  <div class="field-label is-small is-normal"><label class="label mb-0">Cribriform</label></div>
+                  <div class="field-body">
+                    <div class="control">
+                      <div class="select is-small is-fullwidth">
+                        <select v-model="result.report.cribriform">
+                          <option value="Present">Present</option>
+                          <option value="Absent">Absent</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <hr class="my-2 has-background-grey-dark" />
+                <div class="is-size-7 has-text-weight-bold mb-2">Tumor quantification</div>
+                
+                <div class="field is-horizontal is-small mb-2 align-items-center">
+                  <div class="field-label is-small is-normal" style="flex-grow:2;"><label class="label mb-0">Tissue tumor %</label></div>
+                  <div class="field-body d-flex-row">
+                    <div class="control" style="width:100%">
+                      <input class="input is-small" type="number" step="0.1" v-model="result.report.tumorQuantification">
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="field is-horizontal is-small mb-2 align-items-center">
+                  <div class="field-label is-small is-normal" style="flex-grow:2;"><label class="label mb-0">Tumor len(mm)</label></div>
+                  <div class="field-body d-flex-row">
+                    <div class="control" style="width:100%">
+                      <input class="input is-small" type="number" step="0.1" v-model="result.report.tumorLength">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field is-horizontal is-small mb-2 align-items-center">
+                  <div class="field-label is-small is-normal" style="flex-grow:2;"><label class="label mb-0">Biopsy len(mm)</label></div>
+                  <div class="field-body d-flex-row">
+                    <div class="control" style="width:100%">
+                      <input class="input is-small" type="number" step="0.1" v-model="result.report.biopsyLength">
+                    </div>
+                  </div>
+                </div>
+
+                <button class="button is-primary is-small is-fullwidth mt-3">CONFIRM RESULTS</button>
+              </div>
+            </b-tab-item>
+          </b-tabs>
+        </template>
+
+        <!-- Standard AI result (if not prostate-gleason) -->
+        <template v-else>
+          <h2 class="subtitle">AI Results</h2>
+          <div class="item" v-for="item in result.stats" :key="item.label">
             <div class="left">
               <label class="switch is-small">
-                <input type="checkbox" :checked="isResultTermVisible(termId)" @change="toggleResultTermVisibility(termId)">
+                <input type="checkbox" v-model="item.showOnImage">
                 <span class="switch-slider"></span>
               </label>
-              <span class="dot" :style="{ background: getTermColor(termId) }"></span>
-              <span>{{ getTermName(termId) }}</span>
+              <span class="dot" :style="{ background: item.color }"></span>
+              <span>{{ item.label }}</span>
             </div>
             <div class="right">
-              <button class="delete is-small" @click="removeSupplementaryTerm(result, termId)"></button>
+              <span>{{ item.count }}</span>
+              <span v-if="item.percent !== null">{{ item.percent }}%</span>
             </div>
           </div>
-          <div v-if="!result.supplementaryTerms || !result.supplementaryTerms.length" class="no-terms-notice">No supplementary terms added.</div>
-        </div>
-        <div class="supplementary-terms-controls">
-          <button class="button is-small" @click.stop="toggleTermSelector(result.id)">
-            {{ showTermSelectorFor === result.id ? 'Close' : 'Edit Terms' }}
-          </button>
-        </div>
 
-        <ontology-tree
-          v-if="showTermSelectorFor === result.id && treeReady"
-          class="ontology-tree-container"
-          v-model="result.supplementaryTerms"
-          :ontologies="imageOntologies"
-          :multiple="true"
-        />
+          <h2 class="subtitle">Supplementary Terms</h2>
+          <div class="supplementary-terms-list">
+            <div class="item" v-for="termId in result.supplementaryTerms" :key="termId">
+              <div class="left">
+                <label class="switch is-small">
+                  <input type="checkbox" :checked="isResultTermVisible(termId)" @change="toggleResultTermVisibility(termId)">
+                  <span class="switch-slider"></span>
+                </label>
+                <span class="dot" :style="{ background: getTermColor(termId) }"></span>
+                <span>{{ getTermName(termId) }}</span>
+              </div>
+              <div class="right">
+                <button class="delete is-small" @click="removeSupplementaryTerm(result, termId)"></button>
+              </div>
+            </div>
+            <div v-if="!result.supplementaryTerms || !result.supplementaryTerms.length" class="no-terms-notice">No supplementary terms added.</div>
+          </div>
+          <div class="supplementary-terms-controls">
+            <button class="button is-small" @click.stop="toggleTermSelector(result.id)">
+              {{ showTermSelectorFor === result.id ? 'Close' : 'Edit Terms' }}
+            </button>
+          </div>
 
-        <div class="grade">Overall grade for this result:
-          <strong style="color: orange;">{{ result.grade }}</strong>
-        </div>
+          <ontology-tree
+            v-if="showTermSelectorFor === result.id && treeReady"
+            class="ontology-tree-container"
+            v-model="result.supplementaryTerms"
+            :ontologies="imageOntologies"
+            :multiple="true"
+          />
+
+          <div class="grade">Overall grade for this result:
+            <strong style="color: orange;">{{ result.grade }}</strong>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -193,6 +395,53 @@ export default {
           ],
           supplementaryTerms: [],
           grade: 'Grade 2'
+        },
+        // Mocking prostate-gleason AI result
+        {
+          id: 3,
+          runnerName: 'prostate-gleason',
+          visible: true,
+          includeInReport: true,
+          activeTab: 0,
+          showAllAnnotations: true,
+          annotations: [
+            { label: "Benign", percent: 7.8, color: "#9575CD", showOnImage: false },
+            { label: "Adenocarcinoma", percent: 4.6, color: "#E53935", showOnImage: false },
+            { label: "Gleason 5", percent: 2.9, color: "#EF5350", showOnImage: false },
+            { label: "Gleason 4", percent: 95.4, color: "#FFA726", showOnImage: false },
+            { label: "Gleason 3", percent: 16.0, color: "#FFCA28", showOnImage: false },
+            { label: "G4 cribriform", present: true, color: "#1E88E5", showOnImage: true },
+            { label: "Perineural Invasion (PNI)", present: true, color: "#3949AB", showOnImage: true }
+          ],
+          areas: [
+            { label: "Gleason 5", value: "2.1", color: "#EF5350" },
+            { label: "Gleason 4", value: "85.2", color: "#FFA726" },
+            { label: "Gleason 3", value: "1.4", color: "#FFCA28" },
+            { label: "Total Tumor", value: "88.7", color: "#E53935" },
+          ],
+          measurements: {
+            tumorLength: 31.4,
+            biopsyLength: 57.7,
+            showTumorLength: true,
+            showBiopsyLength: true
+          },
+          scoring: {
+            primaryPattern: 4,
+            secondaryPattern: 5,
+            totalScore: 9,
+            gradeGroup: 5
+          },
+          report: {
+            gradeGroup: 5,
+            gleasonScore: '4+5',
+            gleason5: 2.9,
+            gleason4: 95.4,
+            gleason3: 16.0,
+            cribriform: 'Present',
+            tumorQuantification: 54.4,
+            tumorLength: 31.4,
+            biopsyLength: 57.7
+          }
         }
       ],
     };
@@ -610,5 +859,56 @@ input[type="range"].slider {
   border: 1px solid $dark-border-color;
   border-radius: 4px;
   padding: 5px;
+}
+
+/* Prostate Gleason Custom Styles */
+.gleason-tabs {
+  margin-top: 5px;
+}
+.gleason-tabs ::v-deep .tab-content {
+  padding: 10px 5px !important;
+}
+.gleason-tabs ::v-deep .tabs li a {
+  padding: 0.5em 0.8em;
+  font-size: 0.8em;
+}
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.text-muted {
+  color: #999;
+}
+.line-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 2px;
+  margin-right: 6px;
+}
+.scoring-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.report-form .field-label {
+  text-align: left;
+  flex-grow: 1;
+}
+.report-form .field-body {
+  flex-grow: 1;
+  align-items: center;
+  display: flex;
+}
+.align-items-center {
+  align-items: center;
+}
+.d-flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 </style>
